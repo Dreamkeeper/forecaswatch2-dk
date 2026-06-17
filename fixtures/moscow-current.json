@@ -1,0 +1,121 @@
+{
+  "watch": {
+    "now": {
+      "year": 2026,
+      "month": 6,
+      "day": 18,
+      "hour": 2,
+      "minute": 18,
+      "second": 0
+    },
+    "battery": {
+      "percent": 100
+    }
+  },
+  "watchSettings": {
+    "timeFormat": "24h"
+  },
+  "claySettings": {
+    "axisTimeFormat": "24h",
+    "colorSaturday": "GColorFolly",
+    "colorSunday": "GColorFolly",
+    "colorUSFederal": "GColorFolly"
+  },
+  "weather": {
+    "city": "Moscow",
+    "currentTemp": 54,
+    "startHour": 2,
+    "temps": [
+      54,
+      53,
+      53,
+      53,
+      54,
+      56,
+      58,
+      60,
+      61,
+      60,
+      61,
+      61,
+      60,
+      60,
+      59,
+      59,
+      58,
+      58,
+      57,
+      57,
+      57,
+      57,
+      57,
+      57
+    ],
+    "precipPct": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8,
+      28,
+      30,
+      30,
+      28,
+      25,
+      13,
+      13,
+      20,
+      25,
+      18,
+      33,
+      58,
+      53,
+      48
+    ],
+    "uvIndex": [
+      0.0,
+      0.0,
+      0.0,
+      0.2,
+      0.6,
+      1.2,
+      2.1,
+      2.6,
+      3.6,
+      2.0,
+      3.4,
+      5.4,
+      2.2,
+      3.0,
+      2.2,
+      0.6,
+      0.5,
+      0.7,
+      0.2,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "sunEvents": [
+      {
+        "type": "sunrise",
+        "dayOffset": 0,
+        "hour": 3,
+        "minute": 44
+      },
+      {
+        "type": "sunset",
+        "dayOffset": 0,
+        "hour": 21,
+        "minute": 17
+      }
+    ]
+  }
+}
