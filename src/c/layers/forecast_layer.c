@@ -7,6 +7,9 @@
 #define LEFT_AXIS_LABEL_STRIP_MIN_W 15
 #define LEFT_AXIS_LABEL_TO_GRAPH_GAP 2
 #define LEFT_AXIS_GRAPH_INSET_DEFAULT (LEFT_AXIS_LABEL_STRIP_MIN_W + LEFT_AXIS_LABEL_TO_GRAPH_GAP)
+#define RIGHT_UV_AXIS_W 19
+#define UV_AXIS_TICK_W 3
+#define UV_AXIS_LABEL_GAP 2
 #define TEMP_LABEL_PAD 2
 #define TEMP_LABEL_H 20
 #define TEMP_LABEL_MEASURE_BOX_W 200
@@ -34,6 +37,8 @@
 #define FORECAST_STEP_SECONDS (60 * 60)
 #define DAY_SECONDS (24 * 60 * 60)
 #define MAX_FORECAST_ENTRIES 24
+#define UV_INDEX_MAX 11
+#define UV_INDEX_UNAVAILABLE 255
 
 typedef struct
 {
@@ -74,9 +79,11 @@ static char s_buffer_lo[12];
 static char s_buffer_hi[12];
 static GPoint s_points_temp[MAX_FORECAST_ENTRIES];
 static GPoint s_points_precip[MAX_FORECAST_ENTRIES + 2];
+static GPoint s_points_uv[MAX_FORECAST_ENTRIES];
 static GPath s_path_precip_area_under;
 static GPath s_path_precip_top;
 static GPath s_path_temp;
+static GPath s_path_uv;
 
 static RenderSpec make_render_spec()
 {
@@ -95,11 +102,43 @@ static RenderSpec make_render_spec()
 static ForecastLayout compute_layout(GRect bounds)
 {
     ForecastLayout layout;
-    layout.graph_bounds = GRect(s_axis_left_w, 0, bounds.size.w - s_axis_left_w, bounds.size.h - FORECAST_BOTTOM_PAD);
+    layout.graph_bounds = GRect(s_axis_left_w, 0, bounds.size.w - s_axis_left_w - RIGHT_UV_AXIS_W,
+                                bounds.size.h - FORECAST_BOTTOM_PAD);
     layout.graph_plot_rect = GRect(layout.graph_bounds.origin.x, 0, layout.graph_bounds.size.w, layout.graph_bounds.size.h - BOTTOM_AXIS_H);
     layout.w = layout.graph_bounds.size.w;
     layout.h = layout.graph_bounds.size.h;
     return layout;
+}
+
+static void draw_uv_axis(GContext *ctx, GRect graph_plot_rect)
+{
+    const int16_t axis_x = graph_plot_rect.origin.x + graph_plot_rect.size.w;
+    const int16_t axis_bottom = graph_plot_rect.origin.y + graph_plot_rect.size.h;
+    const GColor uv_color = PBL_IF_COLOR_ELSE(GColorYellow, GColorWhite);
+
+    graphics_context_set_stroke_color(ctx, uv_color);
+    graphics_context_set_text_color(ctx, uv_color);
+    graphics_context_set_stroke_width(ctx, 1);
+    graphics_draw_line(ctx, GPoint(axis_x, graph_plot_rect.origin.y), GPoint(axis_x, axis_bottom));
+
+    for (int uv_index = 1; uv_index <= UV_INDEX_MAX; ++uv_index)
+    {
+        const int16_t tick_y = axis_bottom - uv_index * graph_plot_rect.size.h / UV_INDEX_MAX;
+        graphics_draw_line(ctx, GPoint(axis_x, tick_y), GPoint(axis_x + UV_AXIS_TICK_W, tick_y));
+
+        if (uv_index == 5 || uv_index == 10)
+        {
+            char label[3];
+            snprintf(label, sizeof(label), "%d", uv_index);
+            graphics_draw_text(ctx, label,
+                               fonts_get_system_font(FONT_KEY_GOTHIC_14),
+                               GRect(axis_x + UV_AXIS_TICK_W + UV_AXIS_LABEL_GAP, tick_y - 8,
+                                     RIGHT_UV_AXIS_W - UV_AXIS_TICK_W - UV_AXIS_LABEL_GAP, 16),
+                               GTextOverflowModeFill,
+                               GTextAlignmentLeft,
+                               NULL);
+        }
+    }
 }
 
 static void night_segments_add(NightSegments *night_segments, time_t start, time_t end)
@@ -488,10 +527,13 @@ static void forecast_update_proc(Layer *layer, GContext *ctx)
     const time_t forecast_end = forecast_start + (num_entries - 1) * FORECAST_STEP_SECONDS;
     NightSegments night_segments = {0};
     struct tm *forecast_start_local = localtime(&forecast_start);
-    int16_t temps[num_entries];
-    uint8_t precips[num_entries];
+    int16_t temps[MAX_FORECAST_ENTRIES] = {0};
+    uint8_t precips[MAX_FORECAST_ENTRIES] = {0};
+    uint8_t uv_indices[MAX_FORECAST_ENTRIES];
+    memset(uv_indices, UV_INDEX_UNAVAILABLE, sizeof(uv_indices));
     persist_get_temp_trend(temps, num_entries);
     persist_get_precip_trend(precips, num_entries);
+    persist_get_uv_trend(uv_indices, num_entries);
 
     // Allocate point arrays for plots
     // Calculate the temperature range
@@ -506,6 +548,7 @@ static void forecast_update_proc(Layer *layer, GContext *ctx)
     // multiply-before-divide so the soft-float library stays out of the binary.
     const int graph_w = graph_bounds.size.w;
     const int span = num_entries - 1;
+    bool has_uv_data = false;
     if (render_spec.draw_night_overlay)
     {
         night_segments = compute_night_segments(forecast_start, forecast_end);
@@ -535,6 +578,22 @@ static void forecast_update_proc(Layer *layer, GContext *ctx)
             temp_h = (int)(((int32_t)(temp - lo) * temp_plot_h) / range_safe);
         }
         s_points_temp[i] = GPoint(entry_x, h - temp_h - MARGIN_TEMP_H - BOTTOM_AXIS_H);
+
+        int uv_index = uv_indices[i];
+        if (uv_index != UV_INDEX_UNAVAILABLE)
+        {
+            has_uv_data = true;
+            if (uv_index > UV_INDEX_MAX)
+            {
+                uv_index = UV_INDEX_MAX;
+            }
+        }
+        else
+        {
+            uv_index = 0;
+        }
+        const int uv_h = uv_index * graph_plot_rect.size.h / UV_INDEX_MAX;
+        s_points_uv[i] = GPoint(entry_x, graph_plot_rect.origin.y + graph_plot_rect.size.h - uv_h);
 
         // emery: draw emphasized major/minor bottom-axis ticks for improved readability.
 #ifdef PBL_PLATFORM_EMERY
@@ -623,6 +682,15 @@ static void forecast_update_proc(Layer *layer, GContext *ctx)
     gpath_draw_outline_open(ctx, &s_path_precip_top);
     MEMORY_HEAP_PROBE_SAMPLE("after_precip_top_draw", &redraw_probe);
 
+    if (has_uv_data)
+    {
+        s_path_uv.num_points = num_entries;
+        s_path_uv.points = s_points_uv;
+        graphics_context_set_stroke_color(ctx, PBL_IF_COLOR_ELSE(GColorYellow, GColorWhite));
+        graphics_context_set_stroke_width(ctx, 1);
+        gpath_draw_outline_open(ctx, &s_path_uv);
+    }
+
     // Draw the temperature line
     s_path_temp.num_points = num_entries;
     s_path_temp.points = s_points_temp;
@@ -641,6 +709,10 @@ static void forecast_update_proc(Layer *layer, GContext *ctx)
     graphics_context_set_fill_color(ctx, GColorBlack);
     graphics_fill_rect(ctx, GRect(0, 0, s_axis_left_w, h - BOTTOM_AXIS_H), 0, GCornerNone); // Paint over plot bleeding
     graphics_draw_line(ctx, GPoint(graph_bounds.origin.x, 0), GPoint(graph_bounds.origin.x, axis_y));
+    if (has_uv_data)
+    {
+        draw_uv_axis(ctx, graph_plot_rect);
+    }
     graphics_context_set_text_color(ctx, GColorWhite);
     GSize hi_size = temp_label_string_size(s_buffer_hi);
     GSize lo_size = temp_label_string_size(s_buffer_lo);

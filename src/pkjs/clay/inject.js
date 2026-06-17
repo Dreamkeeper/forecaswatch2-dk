@@ -24,10 +24,12 @@ module.exports = function (minified) {
     clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
         var clayFetch;
         var clayOwmApiKey;
+        var clayYandexApiKey;
         var clayProvider;
         var clayLocation;
         var initProvider;
         var initOwmApiKey;
+        var initYandexApiKey;
         var initLocation;
         var lastFetchSuccessString;
         var lastFetchSuccess;
@@ -45,15 +47,20 @@ module.exports = function (minified) {
 
         // Save initial states to detect changes to provider
         clayOwmApiKey = clayConfig.getItemByMessageKey('owmApiKey');
+        clayYandexApiKey = clayConfig.getItemByMessageKey('yandexApiKey');
         clayProvider = clayConfig.getItemByMessageKey('provider');
         clayLocation = clayConfig.getItemByMessageKey('location');
         initProvider = clayProvider.get();
         initOwmApiKey = clayOwmApiKey.get();
+        initYandexApiKey = clayYandexApiKey.get();
         initLocation = clayLocation.get();
 
         // Configure default provide section layout
         if (initProvider !== 'openweathermap') {
             clayOwmApiKey.hide()
+        }
+        if (initProvider !== 'yandex') {
+            clayYandexApiKey.hide()
         }
 
         // Configure logic for updating the provider section layout
@@ -63,6 +70,12 @@ module.exports = function (minified) {
             }
             else {
                 clayOwmApiKey.hide();
+            }
+            if (this.get() === 'yandex') {
+                clayYandexApiKey.show();
+            }
+            else {
+                clayYandexApiKey.hide();
             }
             console.log('Provider set to ' + this.get());
         })
@@ -99,6 +112,7 @@ module.exports = function (minified) {
             var returnTo;
             if (clayProvider.get() !== initProvider
                 || clayOwmApiKey.get() !== initOwmApiKey
+                || clayYandexApiKey.get() !== initYandexApiKey
                 || clayLocation.get() !== initLocation) {
                 clayFetch.set(true);
             }

@@ -14,10 +14,15 @@ var RATE_LIMIT_BACKOFF_KEY = storageKeys.GEOCODE_BACKOFF_KEY;
  * @param {string} type HTTP method.
  * @param {Function} onSuccess Callback with response text.
  * @param {Function} onFailure Callback with error details.
+ * @param {{body?: string, headers?: Object}=} options Optional request body and headers.
  * @returns {void}
  */
-function request(url, type, onSuccess, onFailure) {
+function request(url, type, onSuccess, onFailure, options) {
     var xhr = new XMLHttpRequest();
+    var requestOptions = options || {};
+    var headers = requestOptions.headers || {};
+    var headerName;
+
     xhr.timeout = XHR_TIMEOUT_MS;
     xhr.onload = function() {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -42,7 +47,12 @@ function request(url, type, onSuccess, onFailure) {
         });
     };
     xhr.open(type, url);
-    xhr.send();
+    for (headerName in headers) {
+        if (Object.prototype.hasOwnProperty.call(headers, headerName)) {
+            xhr.setRequestHeader(headerName, headers[headerName]);
+        }
+    }
+    xhr.send(requestOptions.body || null);
 }
 
 /**
@@ -561,9 +571,9 @@ WeatherProvider.prototype.fetch = function(onSuccess, onFailure, force) {
 
 WeatherProvider.prototype.hasValidData = function() {
     // all fields are set
-    if (this.hasOwnProperty('tempTrend') && this.hasOwnProperty('precipTrend') && this.hasOwnProperty('startTime') && this.hasOwnProperty('currentTemp')) {
+    if (this.hasOwnProperty('tempTrend') && this.hasOwnProperty('precipTrend') && this.hasOwnProperty('uvTrend') && this.hasOwnProperty('startTime') && this.hasOwnProperty('currentTemp')) {
         // trends are filled with enough data
-        if (this.tempTrend.length >= this.numEntries && this.precipTrend.length >= this.numEntries) {
+        if (this.tempTrend.length >= this.numEntries && this.precipTrend.length >= this.numEntries && this.uvTrend.length >= this.numEntries) {
             console.log('Data from ' + this.name + ' is good, ready to fetch.');
             return true;
         }
@@ -574,6 +584,9 @@ WeatherProvider.prototype.hasValidData = function() {
         }
         if (!this.hasOwnProperty('precipTrend')) {
             console.log('Precipitation trend array was not set properly');
+        }
+        if (!this.hasOwnProperty('uvTrend')) {
+            console.log('UV trend array was not set properly');
         }
         if (!this.hasOwnProperty('startTime')) {
             console.log('Start time value was not set properly');
@@ -594,6 +607,12 @@ WeatherProvider.prototype.getPayload = function() {
     var precips = this.precipTrend.slice(0, this.numEntries).map(function(probability) {
         return Math.round(probability * 100);
     });
+    var uvIndices = this.uvTrend.slice(0, this.numEntries).map(function(uvIndex) {
+        if (typeof uvIndex !== 'number' || !isFinite(uvIndex)) {
+            return 255;
+        }
+        return Math.max(0, Math.min(254, Math.round(uvIndex)));
+    });
     var tempsIntView = new Int16Array(temps);
     var tempsByteArray = Array.prototype.slice.call(new Uint8Array(tempsIntView.buffer));
     var sunEventsIntView = new Int32Array(this.sunEvents.map(function(sunEvent) {
@@ -603,6 +622,7 @@ WeatherProvider.prototype.getPayload = function() {
     var payload = {
         TEMP_TREND_INT16: tempsByteArray,
         PRECIP_TREND_UINT8: precips, // Holds values within [0,100]
+        UV_TREND_UINT8: uvIndices, // 255 means unavailable
         FORECAST_START: this.startTime,
         NUM_ENTRIES: this.numEntries,
         CURRENT_TEMP: Math.round(this.currentTemp),

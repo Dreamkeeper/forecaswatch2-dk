@@ -1,6 +1,7 @@
 
 var WundergroundProvider = require('./weather/wunderground.js');
 var OpenWeatherMapProvider = require('./weather/openweathermap.js')
+var YandexProvider = require('./weather/yandex.js');
 var WeatherProvider = require('./weather/provider.js');
 var createTelemetryClient = require('./telemetry.js');
 var Clay = require('./clay/_source.js');
@@ -46,6 +47,7 @@ var KEY_LAST_FETCH_ATTEMPT = storageKeys.LAST_FETCH_ATTEMPT_KEY;
 var KEY_GEOCODE_CACHE = storageKeys.GEOCODE_CACHE_KEY;
 var KEY_GEOCODE_BACKOFF = storageKeys.GEOCODE_BACKOFF_KEY;
 var KEY_V1_34_0_WEEKEND_HOLIDAY_COLOR_MIGRATION = 'v1.34.0_weekend_holiday_color_migration';
+var KEY_UV_FIXTURE_CLEANUP = 'uv_fixture_cleanup_v1';
 var DEFAULT_COLOR_WHITE = pebbleColors.GColorWhite;
 var DEFAULT_COLOR_FOLLY = pebbleColors.GColorFolly;
 
@@ -136,6 +138,16 @@ Pebble.addEventListener('ready',
             }, function() {
                 sendFixtureWeather(activeFixture);
             });
+            return;
+        }
+        if (localStorage.getItem(KEY_UV_FIXTURE_CLEANUP) === null) {
+            // Replace weather accidentally persisted by an earlier UV dev build
+            // that bundled the deterministic Chicago screenshot fixture.
+            localStorage.removeItem(KEY_LAST_FETCH_SUCCESS);
+            localStorage.setItem(KEY_UV_FIXTURE_CLEANUP, 'complete');
+            app.pendingStartupFetch = false;
+            fetch(app.provider, true);
+            startTick();
             return;
         }
         if (migratedWeekendHolidayColors) {
@@ -526,6 +538,9 @@ function setProvider(providerId) {
         case 'openweathermap':
             app.provider = new OpenWeatherMapProvider(app.settings.owmApiKey);
             break;
+        case 'yandex':
+            app.provider = new YandexProvider(app.settings.yandexApiKey);
+            break;
         case 'wunderground':
             app.provider = new WundergroundProvider();
             break;
@@ -581,6 +596,7 @@ function getDefaultClaySettings() {
     return {
         provider: 'wunderground',
         owmApiKey: '',
+        yandexApiKey: '',
         fetch: false,
         location: '',
         temperatureUnits: 'f',
@@ -828,6 +844,7 @@ function getFixtureWeatherPayload(fixture) {
     provider.precipTrend = Array.isArray(weather.precipPct) ? weather.precipPct.map(function(probabilityPercent) {
         return probabilityPercent / 100.0;
     }) : [];
+    provider.uvTrend = Array.isArray(weather.uvIndex) ? weather.uvIndex.slice(0) : [];
     provider.sunEvents = sunEvents;
 
     if (provider.numEntries <= 0 || sunEvents.length < 2 || !provider.hasValidData()) {

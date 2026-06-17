@@ -270,6 +270,7 @@ Fixtures currently support:
 - `weather.startHour`: local hour for the first forecast entry; fixture prep converts it to the runtime forecast timestamp.
 - `weather.temps`: hourly Fahrenheit forecast values.
 - `weather.precipPct`: hourly precipitation percentages, 0-100.
+- `weather.uvIndex`: hourly UV index values.
 - `weather.sunEvents`: the next two sun events as local fields, e.g. `{ "type": "sunset", "dayOffset": 0, "hour": 20, "minute": 10 }`.
 
 Minimal `.env`:

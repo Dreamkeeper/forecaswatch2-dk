@@ -84,7 +84,7 @@ static void main_window_load(Window *window) {
             GRect(0, h - FORECAST_HEIGHT - WEATHER_STATUS_HEIGHT, w, FORECAST_HEIGHT + WEATHER_STATUS_HEIGHT));
 #endif
     loading_layer_refresh();
-    app_message_send_startup_state(loading_layer_has_valid_data());
+    app_message_send_startup_state(!loading_layer_needs_refresh());
     MEMORY_LOG_HEAP("after_window_load");
 }
 

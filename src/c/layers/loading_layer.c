@@ -6,11 +6,19 @@
 static Layer *s_loading_layer;
 static TextLayer *s_loading_text_layer;
 
-bool loading_layer_has_valid_data() {
+bool loading_layer_has_cached_data() {
+    return persist_has_forecast_data();
+}
+
+bool loading_layer_needs_refresh() {
+    if (!loading_layer_has_cached_data()) {
+        return true;
+    }
+
     const time_t forecast_start = persist_get_forecast_start();
     const time_t now = watch_services_now();
 
-    return now - forecast_start <= 60 * 60 * 12;
+    return now - forecast_start > 60 * 60 * 12;
 }
 
 static void loading_update_proc(Layer *layer, GContext *ctx) {
@@ -42,7 +50,7 @@ void loading_layer_create(Layer* parent_layer, GRect frame) {
 }
 
 void loading_layer_refresh() {
-    if (loading_layer_has_valid_data())
+    if (loading_layer_has_cached_data())
         layer_set_hidden(s_loading_layer, true);
     else
         layer_set_hidden(s_loading_layer, false); // show the no data notice
