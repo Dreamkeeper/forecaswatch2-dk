@@ -192,6 +192,10 @@ module.exports = [
                     {
                         "label": "OpenWeatherMap",
                         "value": "openweathermap"
+                    },
+                    {
+                        "label": "Yandex Weather",
+                        "value": "yandex"
                     }
                 ]
             },
@@ -200,6 +204,12 @@ module.exports = [
                 "label": "OpenWeatherMap API key",
                 "messageKey": "owmApiKey",
                 "description": "<a href='https://openweathermap.org/'>Register an OpenWeatherMap account</a> and paste your API key here"
+            },
+            {
+                "type": "input",
+                "label": "Yandex Weather API key",
+                "messageKey": "yandexApiKey",
+                "description": "<a href='https://yandex.ru/pogoda/b2b/smarthome'>Get a Yandex Weather API key</a> and paste it here"
             },
             {
                 "type": "toggle",

@@ -1,6 +1,7 @@
 
 var WundergroundProvider = require('./weather/wunderground.js');
 var OpenWeatherMapProvider = require('./weather/openweathermap.js')
+var YandexProvider = require('./weather/yandex.js');
 var WeatherProvider = require('./weather/provider.js');
 var createTelemetryClient = require('./telemetry.js');
 var Clay = require('./clay/_source.js');
@@ -537,6 +538,9 @@ function setProvider(providerId) {
         case 'openweathermap':
             app.provider = new OpenWeatherMapProvider(app.settings.owmApiKey);
             break;
+        case 'yandex':
+            app.provider = new YandexProvider(app.settings.yandexApiKey);
+            break;
         case 'wunderground':
             app.provider = new WundergroundProvider();
             break;
@@ -592,6 +596,7 @@ function getDefaultClaySettings() {
     return {
         provider: 'wunderground',
         owmApiKey: '',
+        yandexApiKey: '',
         fetch: false,
         location: '',
         temperatureUnits: 'f',

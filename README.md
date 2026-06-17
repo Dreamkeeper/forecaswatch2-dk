@@ -28,7 +28,7 @@ Open source revival of the beloved ForecasWatch watchface. This includes support
 * Vibrate on disconnect
 * Quiet time indicator
 * Night shading
-* Multiple weather providers (Weather Underground*, OpenWeatherMap)
+* Multiple weather providers (Weather Underground*, OpenWeatherMap, Yandex Weather)
 * Current temperature
 * Temperature forecast (red line)
 * UV index forecast (yellow line)
@@ -42,6 +42,8 @@ Open source revival of the beloved ForecasWatch watchface. This includes support
 * Offline configuration page
 
 *\* Using a hacky workaround*
+
+Yandex Weather currently supplements precipitation probability and UV index graphs with Open-Meteo, because those fields are not available on the Yandex Weather Smart Home free tier.
 
 ## Platforms
 

@@ -14,10 +14,15 @@ var RATE_LIMIT_BACKOFF_KEY = storageKeys.GEOCODE_BACKOFF_KEY;
  * @param {string} type HTTP method.
  * @param {Function} onSuccess Callback with response text.
  * @param {Function} onFailure Callback with error details.
+ * @param {{body?: string, headers?: Object}=} options Optional request body and headers.
  * @returns {void}
  */
-function request(url, type, onSuccess, onFailure) {
+function request(url, type, onSuccess, onFailure, options) {
     var xhr = new XMLHttpRequest();
+    var requestOptions = options || {};
+    var headers = requestOptions.headers || {};
+    var headerName;
+
     xhr.timeout = XHR_TIMEOUT_MS;
     xhr.onload = function() {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -42,7 +47,12 @@ function request(url, type, onSuccess, onFailure) {
         });
     };
     xhr.open(type, url);
-    xhr.send();
+    for (headerName in headers) {
+        if (Object.prototype.hasOwnProperty.call(headers, headerName)) {
+            xhr.setRequestHeader(headerName, headers[headerName]);
+        }
+    }
+    xhr.send(requestOptions.body || null);
 }
 
 /**
