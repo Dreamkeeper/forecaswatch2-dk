@@ -234,7 +234,7 @@ var YandexProvider = function(apiKey) {
     this._super.call(this);
     this.name = 'Yandex Weather';
     this.id = 'yandex';
-    this.apiKey = apiKey;
+    this.apiKey = typeof apiKey === 'string' ? apiKey.trim() : apiKey;
 };
 
 YandexProvider.prototype = Object.create(WeatherProvider.prototype);

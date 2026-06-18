@@ -48,6 +48,8 @@ var KEY_GEOCODE_CACHE = storageKeys.GEOCODE_CACHE_KEY;
 var KEY_GEOCODE_BACKOFF = storageKeys.GEOCODE_BACKOFF_KEY;
 var KEY_V1_34_0_WEEKEND_HOLIDAY_COLOR_MIGRATION = 'v1.34.0_weekend_holiday_color_migration';
 var KEY_UV_FIXTURE_CLEANUP = 'uv_fixture_cleanup_v1';
+var DEFAULT_WEATHER_REFRESH_MINUTES = 30;
+var YANDEX_WEATHER_REFRESH_MINUTES = 120;
 var DEFAULT_COLOR_WHITE = pebbleColors.GColorWhite;
 var DEFAULT_COLOR_FOLLY = pebbleColors.GColorFolly;
 
@@ -976,21 +978,31 @@ function maybeTrackWeatherFetch(event) {
 }
 
 function tryFetch(provider) {
-    if (needRefresh()) {
+    if (needRefresh(provider)) {
         fetch(provider, false);
     };
 }
 
 function roundDownMinutes(date, minuteMod) {
     // E.g. with minuteMod=30, 3:52 would roll back to 3:30
-    out = new Date(date);
+    var out = new Date(date);
     out.setMinutes(date.getMinutes() - (date.getMinutes() % minuteMod));
     out.setSeconds(0);
     out.setMilliseconds(0);
     return out;
 }
 
-function needRefresh() {
+function getRefreshMinutes(provider) {
+    if (provider && provider.id === 'yandex') {
+        return YANDEX_WEATHER_REFRESH_MINUTES;
+    }
+
+    return DEFAULT_WEATHER_REFRESH_MINUTES;
+}
+
+function needRefresh(provider) {
+    var refreshMinutes = getRefreshMinutes(provider);
+
     // If the weather has never been fetched
     var lastFetchSuccessString = localStorage.getItem(KEY_LAST_FETCH_SUCCESS);
     if (lastFetchSuccessString === null) {
@@ -1001,6 +1013,5 @@ function needRefresh() {
         // Just covering all my bases
         return true;
     }
-    // If the most recent fetch is more than 30 minutes old
-    return (Date.now() - roundDownMinutes(new Date(lastFetchSuccess.time), 30) > 1000 * 60 * 30);
+    return (Date.now() - roundDownMinutes(new Date(lastFetchSuccess.time), refreshMinutes) > 1000 * 60 * refreshMinutes);
 }
