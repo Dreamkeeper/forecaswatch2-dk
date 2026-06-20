@@ -24,7 +24,7 @@ _.file = ".env"
 
 [tasks.prepare-package]
 description = "Prepare package.json from profile (default: dev)"
-run = "scripts/prepare-package.sh"
+run = "bash scripts/prepare-package.sh"
 
 [tasks.telemetry-serve]
 description = "Serve telemetry ingest function locally"
@@ -36,26 +36,26 @@ run = "pebble clean"
 
 [tasks.build]
 description = "Build PBW (default: dev)"
-run = "scripts/build.sh"
+run = "bash scripts/build.sh"
 
 [tasks.rebuild]
 description = "Clean and rebuild PBW"
-run = "pebble clean && scripts/build.sh"
+run = "pebble clean && bash scripts/build.sh"
 
 [tasks.install-phone]
 description = "Build and install dev build on phone"
 alias = "install"
-run = "scripts/install-phone.sh"
+run = "bash scripts/install-phone.sh"
 
 [tasks.install-cloud]
 description = "Build and install on CloudPebble (default: dev)"
 alias = "cloud"
-run = "scripts/install-cloud.sh"
+run = "bash scripts/install-cloud.sh"
 
 [tasks.install-emulator]
 description = "Build and install on emulator (default profile: dev, emulator: basalt)"
 alias = "emu"
-run = "pebble wipe && scripts/install-emulator.sh"
+run = "pebble wipe && bash scripts/install-emulator.sh"
 
 [tasks.kill-emulator]
 description = "Stop running emulator and phone simulator"
@@ -64,17 +64,17 @@ run = "pebble kill"
 
 [tasks.screenshot-phone]
 description = "Take a screenshot from phone"
-run = "scripts/screenshot-phone.sh"
+run = "bash scripts/screenshot-phone.sh"
 
 [tasks.screenshot-emulator]
 description = "Take a screenshot from emulator (default: basalt)"
 alias = "screenshot"
-run = "scripts/screenshot-emulator.sh"
+run = "bash scripts/screenshot-emulator.sh"
 
 [tasks.composite-screenshot]
 description = "Composite a screenshot PNG into an SVG Pebble frame"
-run = "screenshot/composite_svg.sh"
+run = "bash screenshot/composite_svg.sh"
 
 [tasks.composite]
 description = "Composite all raw screenshots for a screenshot version"
-run = "scripts/composite-version.sh"
+run = "bash scripts/composite-version.sh"
