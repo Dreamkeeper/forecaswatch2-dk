@@ -4,8 +4,8 @@
       "year": 2026,
       "month": 6,
       "day": 18,
-      "hour": 2,
-      "minute": 18,
+      "hour": 12,
+      "minute": 34,
       "second": 0
     },
     "battery": {
@@ -27,7 +27,7 @@
   "weather": {
     "city": "Moscow",
     "currentTemp": 54,
-    "startHour": 2,
+    "startHour": 12,
     "temps": [
       54,
       53,

@@ -37,7 +37,7 @@ Open source revival of the beloved ForecasWatch watchface. This includes support
 
 | Pebble Time | Pebble 2 Duo | Pebble Time 2 |
 | --- | --- | --- |
-| <img src="screenshot/v1.33.0/composite/pebble-time-red.png" alt="Pebble Time screenshot"> | <img src="screenshot/v1.33.0/composite/pebble2-duo-white.png" alt="Pebble 2 Duo screenshot"> | <img src="screenshot/v1.33.0/composite/pebble-time2-red.png" alt="Pebble Time 2 screenshot"> |
+| <img src="screenshot/yaforecaswatch2-moscow/composite/pebble-time-red.png" alt="Pebble Time screenshot with Moscow weather, UV graph, and Russian holidays"> | <img src="screenshot/yaforecaswatch2-moscow/composite/pebble2-duo-white.png" alt="Pebble 2 Duo screenshot with Moscow weather, UV graph, and Russian holidays"> | <img src="screenshot/yaforecaswatch2-moscow/composite/pebble-time2-red.png" alt="Pebble Time 2 screenshot with Moscow weather, UV graph, and Russian holidays"> |
 
 ## Features
 
