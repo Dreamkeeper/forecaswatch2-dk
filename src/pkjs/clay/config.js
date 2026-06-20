@@ -141,12 +141,75 @@ var config = [
             },
             {
                 "type": "color",
-                "label": "US federal holidays color",
-                "messageKey": "colorUSFederal",
+                "label": "Holiday set 1 color",
+                "messageKey": "colorHoliday1",
                 "defaultValue": "#FF0055",
-                "description": "White means disable",
                 "sunlight": false,
                 "capabilities": ["COLOR"]
+            },
+            {
+                "type": "select",
+                "label": "Holiday set 1",
+                "messageKey": "holidaySet1",
+                "defaultValue": "1",
+                "options": [
+                    {
+                        "label": "None",
+                        "value": "0"
+                    },
+                    {
+                        "label": "US",
+                        "value": "1"
+                    },
+                    {
+                        "label": "Russia",
+                        "value": "2"
+                    },
+                    {
+                        "label": "Spain national",
+                        "value": "3"
+                    },
+                    {
+                        "label": "Spain + Catalonia",
+                        "value": "4"
+                    }
+                ]
+            },
+            {
+                "type": "color",
+                "label": "Holiday set 2 color",
+                "messageKey": "colorHoliday2",
+                "defaultValue": "#00AAFF",
+                "sunlight": false,
+                "capabilities": ["COLOR"]
+            },
+            {
+                "type": "select",
+                "label": "Holiday set 2",
+                "messageKey": "holidaySet2",
+                "defaultValue": "0",
+                "options": [
+                    {
+                        "label": "None",
+                        "value": "0"
+                    },
+                    {
+                        "label": "US",
+                        "value": "1"
+                    },
+                    {
+                        "label": "Russia",
+                        "value": "2"
+                    },
+                    {
+                        "label": "Spain national",
+                        "value": "3"
+                    },
+                    {
+                        "label": "Spain + Catalonia",
+                        "value": "4"
+                    }
+                ]
             },
         ]
     },

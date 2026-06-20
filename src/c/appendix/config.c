@@ -28,7 +28,11 @@ static Config config_defaults(void) {
         .color_sunday = GColorFolly,
         .color_us_federal = GColorFolly,
         .color_time = GColorWhite,
-        .day_night_shading = true
+        .day_night_shading = true,
+        .holiday_set_1 = HOLIDAY_SET_US,
+        .holiday_set_2 = HOLIDAY_SET_NONE,
+        .color_holiday_1 = GColorFolly,
+        .color_holiday_2 = GColorVividCerulean
     };
 }
 
@@ -116,7 +120,7 @@ GFont config_time_font() {
 }
 
 bool config_highlight_holidays() {
-    return !gcolor_equal(g_config->color_us_federal, GColorWhite);
+    return g_config->holiday_set_1 != HOLIDAY_SET_NONE || g_config->holiday_set_2 != HOLIDAY_SET_NONE;
 }
 
 bool config_highlight_sundays() {

@@ -11,6 +11,7 @@ var storageKeys = require('./storage-keys.js');
 var pkg = require('../../package.json');
 var activeFixture = require('./active-fixture.generated.js');
 var pebbleColors = require('./pebble-colors.js');
+var holidays = require('./holidays.js');
 
 /**
  * Full release-notification manifest (dev: force-show by version). Omitted from bundle if missing.
@@ -53,6 +54,7 @@ var DEFAULT_WEATHER_REFRESH_MINUTES = 30;
 var YANDEX_WEATHER_REFRESH_MINUTES = 60;
 var DEFAULT_COLOR_WHITE = pebbleColors.GColorWhite;
 var DEFAULT_COLOR_FOLLY = pebbleColors.GColorFolly;
+var DEFAULT_COLOR_HOLIDAY_2 = pebbleColors.GColorVividCerulean;
 var IS_DEBUG_BUILD = pkg.buildProfile === 'debug';
 
 app.fetchInProgress = false;
@@ -101,6 +103,7 @@ Pebble.addEventListener('webviewclosed', function(e) {
     app.telemetry = createTelemetryClient(getRuntimeTelemetryConfig());
     refreshProvider();
     sendClaySettings();
+    holidays.sendHolidayBitsets(app.settings);
 
     // Fetching goes last, after other settings have been handled
     if (app.settings.fetch === true) {
@@ -139,7 +142,9 @@ Pebble.addEventListener('ready',
         refreshProvider();
         if (activeFixture) {
             sendClaySettings(function() {
-                sendFixtureWeather(activeFixture);
+                holidays.sendHolidayBitsets(app.settings, function() {
+                    sendFixtureWeather(activeFixture);
+                });
             }, function() {
                 sendFixtureWeather(activeFixture);
             });
@@ -158,6 +163,7 @@ Pebble.addEventListener('ready',
         if (migratedWeekendHolidayColors) {
             sendClaySettings(markWeekendHolidayColorMigrationComplete);
         }
+        holidays.sendHolidayBitsets(app.settings);
         if (app.pendingStartupFetch) {
             app.pendingStartupFetch = false;
             fetch(app.provider, true);
@@ -593,6 +599,8 @@ function startTick() {
 }
 
 function sendClaySettings(onSuccess, onFailure) {
+    var holidaySet1 = normalizeHolidaySetId(app.settings.holidaySet1);
+    var holidaySet2 = normalizeHolidaySetId(app.settings.holidaySet2);
     var payload = {
         "CLAY_CELSIUS": app.settings.temperatureUnits === 'c',
         "CLAY_TIME_LEAD_ZERO": app.settings.timeLeadingZero,
@@ -609,6 +617,10 @@ function sendClaySettings(onSuccess, onFailure) {
         "CLAY_COLOR_SUNDAY": app.settings.hasOwnProperty('colorSunday') ? app.settings.colorSunday : DEFAULT_COLOR_FOLLY,
         "CLAY_COLOR_SATURDAY": app.settings.hasOwnProperty('colorSaturday') ? app.settings.colorSaturday : DEFAULT_COLOR_FOLLY,
         "CLAY_COLOR_US_FEDERAL": app.settings.hasOwnProperty('colorUSFederal') ? app.settings.colorUSFederal : DEFAULT_COLOR_FOLLY,
+        "CLAY_HOLIDAY_SET_1": holidaySet1,
+        "CLAY_HOLIDAY_SET_2": holidaySet2,
+        "CLAY_COLOR_HOLIDAY_1": app.settings.hasOwnProperty('colorHoliday1') ? app.settings.colorHoliday1 : DEFAULT_COLOR_FOLLY,
+        "CLAY_COLOR_HOLIDAY_2": app.settings.hasOwnProperty('colorHoliday2') ? app.settings.colorHoliday2 : DEFAULT_COLOR_HOLIDAY_2,
         "CLAY_COLOR_TIME": app.settings.hasOwnProperty('colorTime') ? app.settings.colorTime : DEFAULT_COLOR_WHITE,
         "CLAY_DAY_NIGHT_SHADING": app.settings.hasOwnProperty('dayNightShading') ? app.settings.dayNightShading : true,
     }
@@ -623,6 +635,28 @@ function sendClaySettings(onSuccess, onFailure) {
             onFailure(e);
         }
     });
+}
+
+/**
+ * Normalize holiday set settings stored by Clay selects into numeric IDs.
+ *
+ * @param {*} value Clay setting value.
+ * @returns {number} Holiday set ID.
+ */
+function normalizeHolidaySetId(value) {
+    var parsed = typeof value === 'number' ? value : parseInt(value, 10);
+
+    if (
+        parsed === holidays.HOLIDAY_SET_NONE ||
+        parsed === holidays.HOLIDAY_SET_US ||
+        parsed === holidays.HOLIDAY_SET_RU ||
+        parsed === holidays.HOLIDAY_SET_ES_NATIONAL ||
+        parsed === holidays.HOLIDAY_SET_ES_CATALONIA
+    ) {
+        return parsed;
+    }
+
+    return holidays.HOLIDAY_SET_NONE;
 }
 
 function refreshProvider() {
@@ -684,7 +718,12 @@ function clayTryDefaults() {
             Object.prototype.hasOwnProperty.call(defaults, prop) &&
             !Object.prototype.hasOwnProperty.call(persistClay, prop)
         ) {
-            persistClay[prop] = defaults[prop];
+            if (prop === 'colorHoliday1' && Object.prototype.hasOwnProperty.call(persistClay, 'colorUSFederal')) {
+                persistClay[prop] = persistClay.colorUSFederal;
+            }
+            else {
+                persistClay[prop] = defaults[prop];
+            }
         }
     }
     localStorage.setItem('clay-settings', JSON.stringify(persistClay));
@@ -716,6 +755,10 @@ function getDefaultClaySettings() {
         colorSunday: DEFAULT_COLOR_FOLLY,
         colorSaturday: DEFAULT_COLOR_FOLLY,
         colorUSFederal: DEFAULT_COLOR_FOLLY,
+        holidaySet1: String(holidays.HOLIDAY_SET_US),
+        holidaySet2: String(holidays.HOLIDAY_SET_NONE),
+        colorHoliday1: DEFAULT_COLOR_FOLLY,
+        colorHoliday2: DEFAULT_COLOR_HOLIDAY_2,
         showQt: true,
         vibe: false,
         btIcons: 'both',
@@ -756,6 +799,7 @@ function clayTryWeekendHolidayColorMigration() {
         persistClay.colorSunday = DEFAULT_COLOR_FOLLY;
         persistClay.colorSaturday = DEFAULT_COLOR_FOLLY;
         persistClay.colorUSFederal = DEFAULT_COLOR_FOLLY;
+        persistClay.colorHoliday1 = DEFAULT_COLOR_FOLLY;
         localStorage.setItem('clay-settings', JSON.stringify(persistClay));
         console.log('Migrated weekend/holiday color defaults to Folly');
         return true;
@@ -871,7 +915,9 @@ function isColorSettingKey(key) {
         key === 'colorToday' ||
         key === 'colorSunday' ||
         key === 'colorSaturday' ||
-        key === 'colorUSFederal';
+        key === 'colorUSFederal' ||
+        key === 'colorHoliday1' ||
+        key === 'colorHoliday2';
 }
 
 /**

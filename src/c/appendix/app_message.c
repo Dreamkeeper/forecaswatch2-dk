@@ -22,6 +22,10 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     Tuple *city_tuple = dict_find(iterator, MESSAGE_KEY_CITY);
     Tuple *sun_events_tuple = dict_find(iterator, MESSAGE_KEY_SUN_EVENTS);
     Tuple *debug_fetch_error_tuple = dict_find(iterator, MESSAGE_KEY_DEBUG_FETCH_ERROR);
+    Tuple *holiday_slot_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_SLOT);
+    Tuple *holiday_set_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_SET);
+    Tuple *holiday_year_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_YEAR);
+    Tuple *holiday_bits_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_BITS);
 
     // Clay config options
     Tuple *clay_celsius_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_CELSIUS);
@@ -39,6 +43,10 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     Tuple *clay_color_saturday_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_COLOR_SATURDAY);
     Tuple *clay_color_sunday_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_COLOR_SUNDAY);
     Tuple *clay_color_us_federal_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_COLOR_US_FEDERAL);
+    Tuple *clay_holiday_set_1_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_HOLIDAY_SET_1);
+    Tuple *clay_holiday_set_2_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_HOLIDAY_SET_2);
+    Tuple *clay_color_holiday_1_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_COLOR_HOLIDAY_1);
+    Tuple *clay_color_holiday_2_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_COLOR_HOLIDAY_2);
     Tuple *clay_color_time_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_COLOR_TIME);
     Tuple *clay_day_night_shading_tuple = dict_find(iterator, MESSAGE_KEY_CLAY_DAY_NIGHT_SHADING);
 
@@ -81,10 +89,27 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         persist_set_debug_fetch_error((bool)debug_fetch_error_tuple->value->uint8);
         time_layer_refresh();
     }
+    else if (holiday_slot_tuple && holiday_set_tuple && holiday_year_tuple && holiday_bits_tuple) {
+        HolidayYear holiday_year = (HolidayYear) {
+            .year = (int16_t)holiday_year_tuple->value->int32,
+            .holiday_set = (uint8_t)holiday_set_tuple->value->int32
+        };
+        uint8_t slot = (uint8_t)holiday_slot_tuple->value->int32;
+
+        if (holiday_bits_tuple->length == HOLIDAY_BITSET_BYTES && (slot == 1 || slot == 2)) {
+            memcpy(holiday_year.bits, holiday_bits_tuple->value->data, HOLIDAY_BITSET_BYTES);
+            persist_set_holiday_year(slot, &holiday_year);
+            calendar_layer_refresh();
+        }
+        else {
+            APP_LOG(APP_LOG_LEVEL_WARNING, "Bad holiday payload received");
+        }
+    }
     else if (clay_celsius_tuple && clay_time_lead_zero_tuple && clay_axis_12h_tuple && clay_start_mon_tuple && clay_prev_week_tuple
         && clay_color_today_tuple && clay_time_font_tuple && clay_vibe_tuple && clay_show_qt_tuple && clay_show_bt_tuple
         && clay_show_bt_disconnect_tuple && clay_show_am_pm_tuple && clay_color_saturday_tuple && clay_color_sunday_tuple
-        && clay_color_us_federal_tuple && clay_color_time_tuple && clay_day_night_shading_tuple) {
+        && clay_color_us_federal_tuple && clay_holiday_set_1_tuple && clay_holiday_set_2_tuple
+        && clay_color_holiday_1_tuple && clay_color_holiday_2_tuple && clay_color_time_tuple && clay_day_night_shading_tuple) {
         // Clay config data received
         bool clay_celsius = (bool) (clay_celsius_tuple->value->int16);
         bool time_lead_zero = (bool) (clay_time_lead_zero_tuple->value->int16);
@@ -102,6 +127,10 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         GColor color_saturday = GColorFromHEX(clay_color_saturday_tuple->value->int32);
         GColor color_sunday = GColorFromHEX(clay_color_sunday_tuple->value->int32);
         GColor color_us_federal = GColorFromHEX(clay_color_us_federal_tuple->value->int32);
+        uint8_t holiday_set_1 = (uint8_t)clay_holiday_set_1_tuple->value->int32;
+        uint8_t holiday_set_2 = (uint8_t)clay_holiday_set_2_tuple->value->int32;
+        GColor color_holiday_1 = GColorFromHEX(clay_color_holiday_1_tuple->value->int32);
+        GColor color_holiday_2 = GColorFromHEX(clay_color_holiday_2_tuple->value->int32);
         GColor color_time = GColorFromHEX(clay_color_time_tuple->value->int32);
         Config config = (Config) {
             .celsius = clay_celsius,
@@ -120,7 +149,11 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
             .color_sunday = color_sunday,
             .color_us_federal = color_us_federal,
             .color_time = color_time,
-            .day_night_shading = day_night_shading
+            .day_night_shading = day_night_shading,
+            .holiday_set_1 = holiday_set_1,
+            .holiday_set_2 = holiday_set_2,
+            .color_holiday_1 = color_holiday_1,
+            .color_holiday_2 = color_holiday_2
         };
         persist_set_config(config);
         main_window_refresh();
@@ -157,7 +190,7 @@ void app_message_init() {
     app_message_register_inbox_dropped(inbox_dropped_callback);
 
     // Open AppMessage
-    const int inbox_size = 320;
+    const int inbox_size = 512;
     const int outbox_size = dict_calc_buffer_size(1, sizeof(uint8_t));
     APP_LOG(APP_LOG_LEVEL_INFO, "AppMessage buffer sizes: inbox=%d outbox=%d", inbox_size, outbox_size);
     app_message_open(inbox_size, outbox_size);

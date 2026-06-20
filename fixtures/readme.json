@@ -19,7 +19,10 @@
     "axisTimeFormat": "12h",
     "colorSaturday": "GColorFolly",
     "colorSunday": "GColorFolly",
-    "colorUSFederal": "GColorFolly"
+    "holidaySet1": "1",
+    "holidaySet2": "0",
+    "colorHoliday1": "GColorFolly",
+    "colorHoliday2": "GColorVividCerulean"
   },
   "weather": {
     "city": "Chicago",

@@ -5,8 +5,23 @@
 
 enum key {
     TEMP_LO, TEMP_HI, TEMP_TREND, PRECIP_TREND, FORECAST_START, CITY, SUN_EVENT_START_TYPE, SUN_EVENT_TIMES, NUM_ENTRIES,
-    CURRENT_TEMP, BATTERY_LEVEL, CONFIG, UV_TREND, DEBUG_FETCH_ERROR
+    CURRENT_TEMP, BATTERY_LEVEL, CONFIG, UV_TREND, DEBUG_FETCH_ERROR,
+    HOLIDAY_SLOT1_YEAR0, HOLIDAY_SLOT1_YEAR1, HOLIDAY_SLOT1_YEAR2,
+    HOLIDAY_SLOT2_YEAR0, HOLIDAY_SLOT2_YEAR1, HOLIDAY_SLOT2_YEAR2
 }; // Deprecated: BATTERY_LEVEL
+
+static int holiday_key(uint8_t slot, int16_t year) {
+    const int16_t bucket = (int16_t)(year % 3);
+
+    if (slot == 1) {
+        return HOLIDAY_SLOT1_YEAR0 + bucket;
+    }
+    if (slot == 2) {
+        return HOLIDAY_SLOT2_YEAR0 + bucket;
+    }
+
+    return -1;
+}
 
 void persist_init() {
     if (!persist_exists(TEMP_LO)) {
@@ -64,7 +79,11 @@ void persist_init() {
             .color_sunday = GColorFolly,
             .color_us_federal = GColorFolly,
             .color_time = GColorWhite,
-            .day_night_shading = true
+            .day_night_shading = true,
+            .holiday_set_1 = HOLIDAY_SET_US,
+            .holiday_set_2 = HOLIDAY_SET_NONE,
+            .color_holiday_1 = GColorFolly,
+            .color_holiday_2 = GColorVividCerulean
         };
         persist_set_config(config);
     }
@@ -129,11 +148,43 @@ int persist_get_sun_event_times(time_t *buffer, const size_t buffer_size) {
 }
 
 int persist_get_config(Config *config) {
-    return persist_read_data(CONFIG, config, sizeof(Config));
+    int size;
+
+    if (!persist_exists(CONFIG)) {
+        return 0;
+    }
+
+    size = persist_get_size(CONFIG);
+    if (size <= 0) {
+        return size;
+    }
+    if (size > (int)sizeof(Config)) {
+        size = sizeof(Config);
+    }
+
+    return persist_read_data(CONFIG, config, size);
 }
 
 bool persist_get_debug_fetch_error() {
     return persist_read_bool(DEBUG_FETCH_ERROR);
+}
+
+bool persist_get_holiday_year(uint8_t slot, int16_t year, HolidayYear *holiday_year) {
+    int key = holiday_key(slot, year);
+
+    if (key < 0 || !holiday_year || !persist_exists(key)) {
+        return false;
+    }
+
+    if (persist_get_size(key) != (int)sizeof(HolidayYear)) {
+        return false;
+    }
+
+    if (persist_read_data(key, holiday_year, sizeof(HolidayYear)) != (int)sizeof(HolidayYear)) {
+        return false;
+    }
+
+    return holiday_year->year == year;
 }
 
 void persist_set_temp_lo(int val) {
@@ -187,4 +238,19 @@ void persist_set_config(Config config) {
 
 void persist_set_debug_fetch_error(bool val) {
     persist_write_bool(DEBUG_FETCH_ERROR, val);
+}
+
+void persist_set_holiday_year(uint8_t slot, const HolidayYear *holiday_year) {
+    int key;
+
+    if (!holiday_year) {
+        return;
+    }
+
+    key = holiday_key(slot, holiday_year->year);
+    if (key < 0) {
+        return;
+    }
+
+    persist_write_data(key, holiday_year, sizeof(HolidayYear));
 }

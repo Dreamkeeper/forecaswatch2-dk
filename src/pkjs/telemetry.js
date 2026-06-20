@@ -23,7 +23,11 @@ function buildSettingsSnapshot(settings) {
         colorToday: safe.colorToday,
         colorSunday: safe.colorSunday,
         colorSaturday: safe.colorSaturday,
-        colorUSFederal: safe.colorUSFederal
+        colorUSFederal: safe.colorUSFederal,
+        holidaySet1: safe.holidaySet1,
+        holidaySet2: safe.holidaySet2,
+        colorHoliday1: safe.colorHoliday1,
+        colorHoliday2: safe.colorHoliday2
     };
 }
 

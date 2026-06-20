@@ -19,7 +19,10 @@
     "axisTimeFormat": "24h",
     "colorSaturday": "GColorFolly",
     "colorSunday": "GColorFolly",
-    "colorUSFederal": "GColorFolly"
+    "holidaySet1": "2",
+    "holidaySet2": "4",
+    "colorHoliday1": "GColorFolly",
+    "colorHoliday2": "GColorVividCerulean"
   },
   "weather": {
     "city": "Moscow",

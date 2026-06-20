@@ -8,6 +8,14 @@ enum TimeFont {
     TIME_FONT_BITHAM = 2,
 };
 
+enum HolidaySet {
+    HOLIDAY_SET_NONE = 0,
+    HOLIDAY_SET_US = 1,
+    HOLIDAY_SET_RU = 2,
+    HOLIDAY_SET_ES_NATIONAL = 3,
+    HOLIDAY_SET_ES_CATALONIA = 4,
+};
+
 typedef struct {
     bool celsius;
     bool time_lead_zero;
@@ -26,6 +34,10 @@ typedef struct {
     GColor color_us_federal;
     GColor color_time;
     bool day_night_shading;
+    uint8_t holiday_set_1;
+    uint8_t holiday_set_2;
+    GColor color_holiday_1;
+    GColor color_holiday_2;
 } Config;
 
 extern Config *g_config;

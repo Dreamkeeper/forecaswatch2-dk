@@ -1,6 +1,7 @@
 #include "calendar_layer.h"
 #include "c/appendix/config.h"
 #include "c/appendix/memory_log.h"
+#include "c/appendix/persist.h"
 #include "c/services/watch_services.h"
 #include <time.h>
 
@@ -20,6 +21,11 @@
 #endif
 
 static Layer *s_calendar_layer;
+
+typedef struct {
+    bool slot_1;
+    bool slot_2;
+} HolidayMatch;
 
 static GRect calendar_cell_rect(GRect bounds, int i) {
     const int box_w = bounds.size.w / DAYS_PER_WEEK;
@@ -76,54 +82,109 @@ static struct tm relative_tm(int days_from_today)
     return out;
 }
 
-static bool is_us_federal_holiday(struct tm *t)
-{
-    // No holidays on weekends (ensures we don't register a false positive for special cases)
-    if (t->tm_wday == 0 || t->tm_wday == 6)
-        return false;
-
-    // These holidays are on a specific weekday, so no special cases
-    if ((t->tm_mon == 0  && t->tm_mday >= 15 && t->tm_mday <= 21 && t->tm_wday == 1) || // MLK Day
-        (t->tm_mon == 1  && t->tm_mday >= 15 && t->tm_mday <= 21 && t->tm_wday == 1) || // Washington's Birthday
-        (t->tm_mon == 4  && t->tm_mday >= 25 && t->tm_mday <= 31 && t->tm_wday == 1) || // Memorial Day
-        (t->tm_mon == 8  && t->tm_mday >= 1  && t->tm_mday <= 7  && t->tm_wday == 1) || // Labor Day
-        (t->tm_mon == 9  && t->tm_mday >= 8  && t->tm_mday <= 14 && t->tm_wday == 1) || // Columbus Day
-        (t->tm_mon == 10 && t->tm_mday >= 22 && t->tm_mday <= 28 && t->tm_wday == 4))   // Thanksgiving
-        return true;
-
-    // These remaining holidays are on a specific day of the month, which get
-    // moved if they fall on a weekend
-    
-    // Friday special cases
-    if (t->tm_wday == 5 && (
-        (t->tm_mon == 11 && t->tm_mday == 31) || // New Years
-        (t->tm_mon == 6  && t->tm_mday == 3)  || // Independence Day
-        (t->tm_mon == 10 && t->tm_mday == 10) || // Veterans Day
-        (t->tm_mon == 11 && t->tm_mday == 24)))  // Christmas
-        return true;
-    // Monday special cases
-    if (t->tm_wday == 1 && (
-        (t->tm_mon == 0  && t->tm_mday == 2)  || // New Years
-        (t->tm_mon == 6  && t->tm_mday == 5)  || // Independence Day
-        (t->tm_mon == 10 && t->tm_mday == 12) || // Veterans Day
-        (t->tm_mon == 11 && t->tm_mday == 26)))  // Christmas
-        return true;
-    // Non special cases
-    if ((t->tm_mon == 0  && t->tm_mday == 1)  || // New Years
-        (t->tm_mon == 6  && t->tm_mday == 4)  || // Independence Day
-        (t->tm_mon == 10 && t->tm_mday == 11) || // Veterans Day
-        (t->tm_mon == 11 && t->tm_mday == 25))   // Christmas
-        return true;
-    
-    // Default to no holiday
-    return false;
+static bool is_leap_year(int year) {
+    return ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
 }
+
+static int day_of_year(struct tm *t) {
+    static const uint16_t month_offsets[] = {
+        0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+    };
+    int year = t->tm_year + 1900;
+    int day = month_offsets[t->tm_mon] + t->tm_mday - 1;
+
+    if (t->tm_mon > 1 && is_leap_year(year)) {
+        day += 1;
+    }
+
+    return day;
+}
+
+static bool holiday_year_has_day(uint8_t slot, uint8_t holiday_set, struct tm *t) {
+    HolidayYear holiday_year;
+    int bit_index;
+
+    if (holiday_set == HOLIDAY_SET_NONE) {
+        return false;
+    }
+
+    if (!persist_get_holiday_year(slot, (int16_t)(t->tm_year + 1900), &holiday_year)) {
+        return false;
+    }
+
+    if (holiday_year.holiday_set != holiday_set) {
+        return false;
+    }
+
+    bit_index = day_of_year(t);
+    if (bit_index < 0 || bit_index >= 366) {
+        return false;
+    }
+
+    return (holiday_year.bits[bit_index / 8] & (1 << (bit_index % 8))) != 0;
+}
+
+static HolidayMatch holiday_match(struct tm *t) {
+    HolidayMatch match = (HolidayMatch) {
+        .slot_1 = holiday_year_has_day(1, g_config->holiday_set_1, t),
+        .slot_2 = holiday_year_has_day(2, g_config->holiday_set_2, t)
+    };
+
+    if (g_config->holiday_set_1 == g_config->holiday_set_2) {
+        match.slot_2 = false;
+    }
+
+    return match;
+}
+
+static bool is_configured_holiday(struct tm *t) {
+    HolidayMatch match = holiday_match(t);
+    return match.slot_1 || match.slot_2;
+}
+
+static GColor holiday_color(HolidayMatch match) {
+    if (match.slot_1) {
+        return g_config->color_holiday_1;
+    }
+    if (match.slot_2) {
+        return g_config->color_holiday_2;
+    }
+    return GColorWhite;
+}
+
+#ifdef PBL_COLOR
+static GRect holiday_highlight_rect(GRect cell_rect) {
+#ifdef PBL_PLATFORM_EMERY
+    // emery: keep the chip large enough for the larger calendar font.
+    return GRect(cell_rect.origin.x + 1, cell_rect.origin.y + 2, cell_rect.size.w - 2, cell_rect.size.h - 4);
+#else
+    return GRect(cell_rect.origin.x + 2, cell_rect.origin.y + 1, cell_rect.size.w - 4, cell_rect.size.h - 2);
+#endif
+}
+
+static void fill_split_rect(GContext *ctx, GRect rect, GColor left_color, GColor right_color) {
+    int left_w = rect.size.w / 2;
+
+    graphics_context_set_fill_color(ctx, left_color);
+    graphics_fill_rect(ctx, GRect(rect.origin.x, rect.origin.y, left_w, rect.size.h), 1, GCornersLeft);
+    graphics_context_set_fill_color(ctx, right_color);
+    graphics_fill_rect(ctx, GRect(rect.origin.x + left_w, rect.origin.y, rect.size.w - left_w, rect.size.h), 1, GCornersRight);
+}
+
+static void draw_holiday_highlight(GContext *ctx, GRect rect, HolidayMatch match) {
+    if (match.slot_1 && match.slot_2) {
+        fill_split_rect(ctx, rect, g_config->color_holiday_1, g_config->color_holiday_2);
+        return;
+    }
+
+    graphics_context_set_fill_color(ctx, holiday_color(match));
+    graphics_fill_rect(ctx, rect, 1, GCornersAll);
+}
+#endif
 
 #ifdef PBL_COLOR
 static GColor date_color(struct tm *t) {
     // Get color for a date, considering weekends and holidays
-    if (is_us_federal_holiday(t))
-        return g_config->color_us_federal;
     if (t->tm_wday == 0)
         return g_config->color_sunday;
     if (t->tm_wday == 6)
@@ -136,7 +197,10 @@ static GColor today_color() {
     // Either follow the date color or override to configured value
 #ifdef PBL_COLOR
     struct tm t = relative_tm(0);
-    return gcolor_equal(g_config->color_today, GColorBlack) ? date_color(&t) : g_config->color_today;
+    HolidayMatch match = holiday_match(&t);
+    return gcolor_equal(g_config->color_today, GColorBlack) && (match.slot_1 || match.slot_2)
+        ? holiday_color(match)
+        : (gcolor_equal(g_config->color_today, GColorBlack) ? date_color(&t) : g_config->color_today);
 #else
     return GColorWhite;
 #endif
@@ -152,23 +216,44 @@ static void calendar_update_proc(Layer *layer, GContext *ctx) {
     // Calculate which box holds today's date
     const int i_today = config_n_today();
 
+    GRect today_rect = GRect((i_today % DAYS_PER_WEEK) * w / DAYS_PER_WEEK, (i_today / DAYS_PER_WEEK) * h / NUM_WEEKS,
+        box_w, box_h);
+
+#ifdef PBL_COLOR
+    struct tm tm_today = relative_tm(0);
+    HolidayMatch today_holiday = holiday_match(&tm_today);
+
+    if (gcolor_equal(g_config->color_today, GColorBlack) && today_holiday.slot_1 && today_holiday.slot_2) {
+        fill_split_rect(ctx, today_rect, g_config->color_holiday_1, g_config->color_holiday_2);
+    }
+    else {
+        graphics_context_set_fill_color(ctx, today_color());
+        graphics_fill_rect(ctx, today_rect, 1, GCornersAll);
+    }
+#else
     graphics_context_set_fill_color(ctx, today_color());
-    graphics_fill_rect(ctx,
-        GRect((i_today % DAYS_PER_WEEK) * w / DAYS_PER_WEEK, (i_today / DAYS_PER_WEEK) * h / NUM_WEEKS,
-        box_w, box_h), 1, GCornersAll);
+    graphics_fill_rect(ctx, today_rect, 1, GCornersAll);
+#endif
 
     for (int i = 0; i < NUM_WEEKS * DAYS_PER_WEEK; ++i) {
         struct tm t = relative_tm(i - i_today);
-        bool highlight_holiday = (config_highlight_holidays() && is_us_federal_holiday(&t));
+        HolidayMatch match = holiday_match(&t);
+        bool highlight_holiday = (config_highlight_holidays() && is_configured_holiday(&t));
         bool highlight_sunday = (config_highlight_sundays() && t.tm_wday == 0);
         bool highlight_saturday = (config_highlight_saturdays() && t.tm_wday == 6);
         bool bold = (i == i_today) || highlight_holiday || highlight_sunday || highlight_saturday;
         GColor text_color = (i == i_today) ? gcolor_legible_over(today_color())
-                                           : PBL_IF_COLOR_ELSE(date_color(&t), GColorWhite);
+                                           : (highlight_holiday ? gcolor_legible_over(holiday_color(match))
+                                                                : PBL_IF_COLOR_ELSE(date_color(&t), GColorWhite));
         char buffer[4];
         GFont font = fonts_get_system_font(bold ? CALENDAR_FONT_KEY_BOLD : CALENDAR_FONT_KEY);
         GRect cell_rect = calendar_cell_rect(bounds, i);
 
+#ifdef PBL_COLOR
+        if (i != i_today && highlight_holiday) {
+            draw_holiday_highlight(ctx, holiday_highlight_rect(cell_rect), match);
+        }
+#endif
         graphics_context_set_text_color(ctx, text_color);
         graphics_draw_text(ctx,
             (snprintf(buffer, sizeof(buffer), "%d", t.tm_mday), buffer),
