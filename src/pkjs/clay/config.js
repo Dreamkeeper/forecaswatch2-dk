@@ -5,7 +5,7 @@ var versionLabel = "v" + meta.version + profileLabel;
 var config = [
     {
         "type": "heading",
-        "defaultValue": "ForecasWatch2"
+        "defaultValue": "YaForecasWatch2"
     },
     {
         "type": "text",
