@@ -572,6 +572,20 @@ function getProviderWarnings(provider) {
     return provider.warnings.slice(0);
 }
 
+/**
+ * Return provider-specific diagnostic details for debug logs.
+ *
+ * @param {Object} provider Weather provider instance.
+ * @returns {Object} Diagnostic details.
+ */
+function getProviderDiagnostics(provider) {
+    if (!provider || !provider.diagnostics || typeof provider.diagnostics !== 'object') {
+        return {};
+    }
+
+    return provider.diagnostics;
+}
+
 function startTick() {
     console.log('Tick from PKJS!');
     tryFetch(app.provider);
@@ -1018,6 +1032,7 @@ function fetch(provider, force) {
                 appendDebugWeatherLog(warnings.length > 0 ? 'fetch_success_with_warnings' : 'fetch_success', {
                     provider: provider.id,
                     warnings: warnings,
+                    diagnostics: getProviderDiagnostics(provider),
                     usedGpsCache: provider.usedGpsCache,
                     gpsErrorCode: provider.gpsErrorCode,
                     locationMode: provider.locationMode,

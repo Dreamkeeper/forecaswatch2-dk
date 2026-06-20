@@ -173,6 +173,7 @@ var WeatherProvider = function() {
     this.gpsErrorCode = null;
     this.locationMode = null;
     this.warnings = [];
+    this.diagnostics = {};
 };
 
 WeatherProvider.prototype.gpsEnable = function() {
@@ -526,6 +527,7 @@ WeatherProvider.prototype.fetch = function(onSuccess, onFailure, force) {
     this.countryCode = null;
     this.locationMode = null;
     this.warnings = [];
+    this.diagnostics = {};
 
     this.withCoordinates((function(lat, lon) {
         this.withCityName(lat, lon, (function(cityName, countryCode) {

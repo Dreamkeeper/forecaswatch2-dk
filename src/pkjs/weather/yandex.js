@@ -204,6 +204,22 @@ function getOpenMeteoByTime(openMeteoData) {
 }
 
 /**
+ * Count numeric values in an array.
+ *
+ * @param {*} values Candidate array.
+ * @returns {number} Count of finite numeric values.
+ */
+function countNumericValues(values) {
+    if (!Array.isArray(values)) {
+        return 0;
+    }
+
+    return values.filter(function(value) {
+        return typeof value === 'number' && isFinite(value);
+    }).length;
+}
+
+/**
  * Build hourly temperature values for the fixed graph window.
  *
  * @param {{time: number, temp: number}[]} hourly Yandex hourly entries.
@@ -342,8 +358,14 @@ YandexProvider.prototype.withOpenMeteoResponse = function(lat, lon, callback, on
                 return;
             }
 
+            this.diagnostics.openMeteo = {
+                status: 'success',
+                hourlyCount: body.hourly.time.length,
+                precipitationProbabilityCount: countNumericValues(body.hourly.precipitation_probability),
+                uvIndexCount: countNumericValues(body.hourly.uv_index)
+            };
             callback(body);
-        },
+        }.bind(this),
         function(error) {
             console.log('[!] Open-Meteo supplement request failed: ' + JSON.stringify(error));
             onFailure({ stage: 'provider_data', code: 'openmeteo_' + error.code });
@@ -379,21 +401,46 @@ YandexProvider.prototype.withProviderData = function(lat, lon, force, onSuccess,
             var openMeteoByTime = openMeteoData ? getOpenMeteoByTime(openMeteoData) : {};
             var index;
             var supplement;
+            var matchedHours = 0;
+            var matchedPrecipHours = 0;
+            var matchedUvHours = 0;
 
             this.precipTrend = [];
             this.uvTrend = [];
             for (index = 0; index < this.numEntries; index += 1) {
                 supplement = openMeteoByTime[graphWindowTimes[index]];
+                if (supplement) {
+                    matchedHours += 1;
+                    if (typeof supplement.precipProbability === 'number' && isFinite(supplement.precipProbability)) {
+                        matchedPrecipHours += 1;
+                    }
+                    if (typeof supplement.uvIndex === 'number' && isFinite(supplement.uvIndex)) {
+                        matchedUvHours += 1;
+                    }
+                }
 
                 this.precipTrend.push(supplement ? supplement.precipProbability : 0);
                 this.uvTrend.push(supplement ? supplement.uvIndex : UV_UNAVAILABLE);
             }
+
+            if (!this.diagnostics.openMeteo) {
+                this.diagnostics.openMeteo = {
+                    status: openMeteoData ? 'success' : 'unavailable'
+                };
+            }
+            this.diagnostics.openMeteo.matchedGraphHours = matchedHours;
+            this.diagnostics.openMeteo.matchedPrecipitationHours = matchedPrecipHours;
+            this.diagnostics.openMeteo.matchedUvHours = matchedUvHours;
 
             onSuccess();
         }).bind(this);
 
         this.withOpenMeteoResponse(lat, lon, finishWithSupplement, (function(error) {
             console.log('Open-Meteo supplement unavailable: ' + JSON.stringify(error));
+            this.diagnostics.openMeteo = {
+                status: 'failure',
+                error: error || { stage: 'provider_data', code: 'openmeteo_unknown_error' }
+            };
             this.warnings.push(error || { stage: 'provider_data', code: 'openmeteo_unknown_error' });
             finishWithSupplement(null);
         }).bind(this));
