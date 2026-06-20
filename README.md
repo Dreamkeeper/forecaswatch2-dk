@@ -9,6 +9,27 @@
 [![GitHub](https://img.shields.io/github/license/mattrossman/forecaswatch2?color=blue&logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAB7ElEQVRIie2TPWsUURSGnxsWjLosIgTJLpL8AbWwUKwjgpg%2FYEAQxCiCSLKgsAppBG38AFNolU72P4hlrLZQEwsVxSD4AWmyKFmLPBY5wWGys9ktBAtfGJh73o9z7p078K9ATeqkOqWmv9Fg0j84269vaIAelcx7u19TaSeBOgocBYaBlxE%2Bop4BWimlL32PqJ5Sj6hVdVZtqRsWYyM0dbUW3tNF4eM9gt6py5n1ctSKMF7U5IL6NkRN9ZxaC24uEzAXtVponkb9vTrd64h2qSshvpzjtjXIcBej%2FlkdznL5WzQNjALPgUZeXDQUcCs8B4BLRcI96lf1cXyPjjqz0w7Ua6EdU59Ext5uDa6rP9VqrB%2Bq39VyUQO1rH5TH8S6Ghk38uEVdVW9k6mNqG210aNBQ11TRzK%2Bu5FVASjFywKwH9id%2B4AfgLr6usuOJ4E68BG4om5Rw5G1oJ4vAevAsSCvbju7TYwV1PbFc7gLfxxYH0op%2FQJOAktdRB3gNvCoCzcfXKcLtwRMpJQ6JYCU0hvgkHoipqkAn4BnKaVVgMwREB6Bm%2Bp9YCJ2tAa8SiktbulKOdMisMgAiAGag3i2QZ2JG7WFdvYf6TlAj9CDwBSbt2IWKOckbeAe8ANoppRWBp26Zf94MVD4f2TxGzyXVgXKldOBAAAAAElFTkSuQmCC)](https://www.gnu.org/licenses/gpl-3.0)
 [![Tip jar](https://img.shields.io/badge/%24%20tip%20jar-PayPal-253B80)](https://paypal.me/mttrssmn)
 
+## About this fork
+
+This fork is published as **YaForecasWatch2**, a modified ForecasWatch2 build focused on making the watchface more useful outside the original Weather Underground/OpenWeatherMap flow.
+
+Changes relative to the original ForecasWatch2 watchface:
+
+- Added **Yandex Weather** as a third main weather provider.
+- Added **Open-Meteo supplements** for Yandex Weather rain probability and UV index graphs, because those fields are not available in the Yandex Weather Smart Home free tier.
+- Changed the Yandex Weather refresh interval to **60 minutes**, matching the free-tier daily request limit more closely.
+- Added **two configurable holiday sets**, with support for US, Russia, Spain national holidays, and Spain national + Catalonia holidays.
+- Holiday data is fetched from **Nager.Date**, cached locally for 30 days, and sent to the watch as compact yearly bitsets so the calendar still works offline.
+- Overlapping holidays from two selected sets are shown with a **split-color date highlight** on color Pebble watches.
+- Added a separate **YaForecasWatch2-debug** build profile with copyable diagnostic logs in settings for weather fetches, Open-Meteo supplements, and Nager.Date holiday sync.
+- Added a unique app UUID/display name and source-code URL metadata for clean redistribution of this GPL-licensed modified version.
+- Added Pebble Time 2 / Emery layout fixes and screenshot/dev tooling improvements used while maintaining this fork.
+
+The current source for this fork is available at:
+
+https://github.com/Dreamkeeper/forecaswatch2-dk
+
+## Original ForecasWatch2 description
 
 Open source revival of the beloved ForecasWatch watchface. This includes support for Weather Underground forecasts, which broke on the original ForecasWatch when the free API was shut down. Feel free to contribute or suggest improvements on GitHub!
 
@@ -38,7 +59,7 @@ Open source revival of the beloved ForecasWatch watchface. This includes support
 * GPS or manual location entry
 * Fahrenheit and Celsius temperatures
 * Customize time font and color
-* Customize colors for Sundays, Saturdays, and US federal holidays
+* Customize colors for Sundays, Saturdays, and up to two holiday sets
 * Offline configuration page
 
 *\* Using a hacky workaround*
@@ -54,6 +75,19 @@ ForecasWatch2 can fetch weather from:
 Yandex Weather support is intended to work with the Yandex Weather Smart Home API tier. That tier provides current temperature, feels-like temperature, wind speed, weather conditions, and condition icons. It does not currently expose precipitation probability or UV index fields, so when Yandex Weather is selected ForecasWatch2 supplements only those graph series with Open-Meteo data for the same location.
 
 This means the watchface can still show the normal temperature, rain probability, and UV index graphs while using Yandex Weather as the main provider.
+
+## Holiday calendar
+
+YaForecasWatch2 can highlight up to two holiday sets at once:
+
+- US holidays
+- Russian holidays
+- Spanish national holidays
+- Spanish national holidays + Catalonia holidays
+
+Holiday data comes from [Nager.Date](https://date.nager.at/). The phone app caches each selected holiday calendar for 30 days in local storage, sends the current/previous/next year to the watch as compact bitsets, and keeps using stale cached data if a refresh fails. This keeps the calendar usable even when the phone is offline.
+
+When both selected holiday sets match the same date, color watches show a split-color highlight. Black-and-white watches use bold holiday dates.
 
 ## Platforms
 
@@ -75,6 +109,17 @@ If you want to sideload a specific build, use the modern Pebble app on [iOS](htt
 ## Developers
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for developer setup and workflow.
+
+### Continuing development with Codex
+
+This repo is prepared for Codex-assisted development:
+
+- Root-level [AGENTS.md](AGENTS.md) contains project-specific instructions Codex should follow.
+- [CONTRIBUTING.md](CONTRIBUTING.md) documents the build, emulator, fixture, and screenshot workflows.
+- Tool versions are pinned in [mise.toml](mise.toml) and [mise.lock](mise.lock).
+- Deterministic UI fixtures live in [fixtures/](fixtures/), which makes visual work easier to reproduce.
+
+For a new fork, install the repo tools with `mise install`, run `npm install`, then ask Codex to inspect `AGENTS.md`, `CONTRIBUTING.md`, and the relevant source files before making changes.
 
 ## Telemetry
 

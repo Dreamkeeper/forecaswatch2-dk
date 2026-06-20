@@ -1,5 +1,30 @@
 # Contributing
 
+## Forking and continuing with Codex
+
+This repository is set up so another maintainer can fork it and continue development with Codex or another coding agent without rediscovering the project shape from scratch.
+
+Recommended first steps for a new fork:
+
+1. Fork and clone the repository.
+2. Install [mise](https://mise.jdx.dev/) and run `mise install` from the repo root.
+3. Run `npm install`.
+4. Read `AGENTS.md` before making changes. It contains the project-specific agent instructions for build verification, debugging, Pebble memory constraints, JavaScript style, and Supabase migration rules.
+5. Ask Codex to read `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, and the files relevant to the task before editing.
+6. After feature changes, run `mise build` where possible. On Windows, if shell-script line endings cause `mise build` to fail before compilation, use WSL or run the same scripts from a Unix shell.
+
+Useful prompts for Codex:
+
+```text
+Read AGENTS.md and CONTRIBUTING.md, then inspect the relevant files before changing code.
+```
+
+```text
+After implementation, run the focused tests and build the PBW. Do not revert unrelated local changes.
+```
+
+Keep `AGENTS.md` updated whenever you add new conventions, build steps, fixture rules, or debugging shortcuts. That file is the best compact handoff to future agent sessions.
+
 ## Building
 
 Prerequisites: [Node.js](https://nodejs.org/en/) and [mise](https://mise.jdx.dev/)
