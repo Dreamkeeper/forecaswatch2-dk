@@ -52,9 +52,9 @@ var KEY_GEOCODE_BACKOFF = storageKeys.GEOCODE_BACKOFF_KEY;
 var KEY_V1_34_0_WEEKEND_HOLIDAY_COLOR_MIGRATION = 'v1.34.0_weekend_holiday_color_migration';
 var KEY_UV_FIXTURE_CLEANUP = 'uv_fixture_cleanup_v1';
 var DEFAULT_WEATHER_REFRESH_MINUTES = 30;
-var YANDEX_WEATHER_REFRESH_MINUTES = 60;
+var YANDEX_WEATHER_REFRESH_MINUTES = 120;
 var DEFAULT_FETCH_FAILURE_BACKOFF_MS = 5 * 60 * 1000;
-var YANDEX_QUOTA_BACKOFF_MS = 24 * 60 * 60 * 1000;
+var YANDEX_FETCH_FAILURE_BACKOFF_MS = 60 * 60 * 1000;
 var DEFAULT_COLOR_WHITE = pebbleColors.GColorWhite;
 var DEFAULT_COLOR_FOLLY = pebbleColors.GColorFolly;
 var DEFAULT_COLOR_HOLIDAY_2 = pebbleColors.GColorVividCerulean;
@@ -558,16 +558,11 @@ function clearFetchBackoff(providerId) {
  * Return the cooldown duration after a failed weather fetch.
  *
  * @param {Object} provider Weather provider instance.
- * @param {{stage: string, code: string}} failure Fetch failure object.
  * @returns {number} Cooldown duration in milliseconds.
  */
-function getFailureBackoffMs(provider, failure) {
-    var code = failure && failure.code;
-
+function getFailureBackoffMs(provider) {
     if (provider && provider.id === 'yandex') {
-        if (code === 'yandex_status_403' || code === 'yandex_status_429') {
-            return YANDEX_QUOTA_BACKOFF_MS;
-        }
+        return YANDEX_FETCH_FAILURE_BACKOFF_MS;
     }
 
     return DEFAULT_FETCH_FAILURE_BACKOFF_MS;
@@ -582,7 +577,7 @@ function getFailureBackoffMs(provider, failure) {
  */
 function writeFetchBackoff(provider, failure) {
     var providerId = provider && provider.id ? provider.id : 'unknown';
-    var durationMs = getFailureBackoffMs(provider, failure);
+    var durationMs = getFailureBackoffMs(provider);
     var backoffMap = readFetchBackoffMap();
     var record = {
         until: Date.now() + durationMs,
