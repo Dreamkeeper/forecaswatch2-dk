@@ -1136,6 +1136,10 @@ function sendFixtureWeather(fixture) {
 function fetch(provider, force, bypassFetchBackoff) {
     var activeBackoff;
 
+    provider.skipPrimaryFetch = false;
+    provider.skipPrimaryFetchReason = null;
+    provider.fetchBackoffFailure = null;
+
     if (!isWatchConnected()) {
         console.log('Skipping weather fetch: no watch connected.');
         return;
@@ -1153,15 +1157,29 @@ function fetch(provider, force, bypassFetchBackoff) {
 
     activeBackoff = getActiveFetchBackoff(provider.id);
     if (activeBackoff !== null && !bypassFetchBackoff) {
-        console.log('Skipping weather fetch: provider is in fetch cooldown.');
-        appendDebugWeatherLog('fetch_skipped_backoff', {
-            provider: provider.id,
-            force: Boolean(force),
-            reason: activeBackoff.reason,
-            until: new Date(activeBackoff.until).toISOString(),
-            remainingMs: Math.max(0, activeBackoff.until - Date.now())
-        });
-        return;
+        if (provider.id === 'yandex') {
+            console.log('Skipping Yandex primary fetch: provider is in fetch cooldown; trying fallback data.');
+            provider.skipPrimaryFetch = true;
+            provider.skipPrimaryFetchReason = activeBackoff.reason;
+            appendDebugWeatherLog('fetch_using_backoff_fallback', {
+                provider: provider.id,
+                force: Boolean(force),
+                reason: activeBackoff.reason,
+                until: new Date(activeBackoff.until).toISOString(),
+                remainingMs: Math.max(0, activeBackoff.until - Date.now())
+            });
+        }
+        else {
+            console.log('Skipping weather fetch: provider is in fetch cooldown.');
+            appendDebugWeatherLog('fetch_skipped_backoff', {
+                provider: provider.id,
+                force: Boolean(force),
+                reason: activeBackoff.reason,
+                until: new Date(activeBackoff.until).toISOString(),
+                remainingMs: Math.max(0, activeBackoff.until - Date.now())
+            });
+            return;
+        }
     }
 
     if (activeBackoff !== null && bypassFetchBackoff) {
@@ -1192,7 +1210,12 @@ function fetch(provider, force, bypassFetchBackoff) {
                 app.fetchInProgress = false;
                 localStorage.setItem(KEY_LAST_FETCH_SUCCESS, JSON.stringify(fetchStatus));
                 resetFetchAttemptCounter();
-                clearFetchBackoff(provider.id);
+                if (provider.fetchBackoffFailure) {
+                    writeFetchBackoff(provider, provider.fetchBackoffFailure);
+                }
+                else {
+                    clearFetchBackoff(provider.id);
+                }
                 console.log('Successfully fetched weather!');
                 appendDebugWeatherLog(warnings.length > 0 ? 'fetch_success_with_warnings' : 'fetch_success', {
                     provider: provider.id,
