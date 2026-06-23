@@ -8,7 +8,7 @@ var UV_UNAVAILABLE = null;
 var YANDEX_WEATHER_CACHE_KEY = storageKeys.YANDEX_WEATHER_CACHE_KEY;
 var OPEN_METEO_WEATHER_CACHE_KEY = storageKeys.OPEN_METEO_WEATHER_CACHE_KEY;
 var CACHE_VERSION = 1;
-var OPEN_METEO_FULL_HOURLY = 'temperature_2m,precipitation_probability,uv_index';
+var OPEN_METEO_FULL_HOURLY = 'temperature_2m,apparent_temperature,precipitation_probability,uv_index';
 var OPEN_METEO_SUPPLEMENT_HOURLY = 'precipitation_probability,uv_index';
 var CACHE_COORDINATE_MATCH_KM = 25;
 
@@ -213,6 +213,7 @@ function getOpenMeteoByTime(openMeteoData) {
     var hourly = openMeteoData && openMeteoData.hourly;
     var times = hourly && hourly.time;
     var temperatures = hourly && hourly.temperature_2m;
+    var apparentTemperatures = hourly && hourly.apparent_temperature;
     var precipProbabilities = hourly && hourly.precipitation_probability;
     var uvIndices = hourly && hourly.uv_index;
     var byTime = {};
@@ -240,6 +241,9 @@ function getOpenMeteoByTime(openMeteoData) {
         byTime[timestamp] = {
             temp: Array.isArray(temperatures) && typeof temperatures[index] === 'number'
                 ? celsiusToFahrenheit(temperatures[index])
+                : null,
+            feelsLike: Array.isArray(apparentTemperatures) && typeof apparentTemperatures[index] === 'number'
+                ? celsiusToFahrenheit(apparentTemperatures[index])
                 : null,
             precipProbability: typeof precipProbability === 'number'
                 ? Math.max(0, Math.min(1, precipProbability / 100))
@@ -494,6 +498,7 @@ function buildOpenMeteoCache(openMeteoData, lat, lon, cityName, countryCode) {
             hourly.push({
                 time: parseInt(key, 10),
                 temp: byTime[key].temp,
+                feelsLike: byTime[key].feelsLike,
                 precipProbability: byTime[key].precipProbability,
                 uvIndex: byTime[key].uvIndex
             });
@@ -774,6 +779,7 @@ YandexProvider.prototype.withOpenMeteoResponse = function(lat, lon, includeTempe
                 includeTemperature: Boolean(includeTemperature),
                 hourlyCount: body.hourly.time.length,
                 temperatureCount: countNumericValues(body.hourly.temperature_2m),
+                apparentTemperatureCount: countNumericValues(body.hourly.apparent_temperature),
                 precipitationProbabilityCount: countNumericValues(body.hourly.precipitation_probability),
                 uvIndexCount: countNumericValues(body.hourly.uv_index)
             };

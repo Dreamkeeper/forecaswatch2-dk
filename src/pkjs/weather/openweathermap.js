@@ -97,6 +97,9 @@ OpenWeatherMapProvider.prototype.withProviderData = function(lat, lon, force, on
         this.tempTrend = weatherData.hourly.map(function(entry) {
             return entry.temp;
         });
+        this.feelsLikeTrend = weatherData.hourly.map(function(entry) {
+            return typeof entry.feels_like === 'number' ? entry.feels_like : null;
+        });
         this.precipTrend = weatherData.hourly.map(function(entry) {
             return entry.pop;
         });

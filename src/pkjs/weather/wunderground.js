@@ -204,6 +204,18 @@ WundergroundProvider.prototype.withProviderData = function(lat, lon, force, onSu
             this.tempTrend = forecast.map(function(entry) {
                 return entry.temp;
             });
+            this.feelsLikeTrend = forecast.map(function(entry) {
+                if (typeof entry.feels_like === 'number') {
+                    return entry.feels_like;
+                }
+                if (typeof entry.feelsLike === 'number') {
+                    return entry.feelsLike;
+                }
+                if (typeof entry.temperatureFeelsLike === 'number') {
+                    return entry.temperatureFeelsLike;
+                }
+                return null;
+            });
             this.precipTrend = forecast.map(function(entry) {
                 return entry.pop / 100.0;
             });

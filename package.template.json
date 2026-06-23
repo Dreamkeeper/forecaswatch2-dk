@@ -1,7 +1,7 @@
 {
   "name": "yaforecaswatch2",
   "author": "Matt Rossman",
-  "version": "1.34.6",
+  "version": "1.34.7",
   "buildProfile": "{{buildProfile}}",
   "keywords": [
     "pebble-app"
