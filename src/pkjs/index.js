@@ -59,6 +59,10 @@ var DEFAULT_COLOR_WHITE = pebbleColors.GColorWhite;
 var DEFAULT_COLOR_FOLLY = pebbleColors.GColorFolly;
 var DEFAULT_COLOR_HOLIDAY_2 = pebbleColors.GColorVividCerulean;
 var IS_DEBUG_BUILD = pkg.buildProfile === 'debug';
+var DEBUG_WEATHER_STATE_NORMAL = 0;
+var DEBUG_WEATHER_STATE_OPENMETEO_TEMP = 1;
+var DEBUG_WEATHER_STATE_STALE_CACHE = 2;
+var DEBUG_STALE_CACHE_MS = 4 * 60 * 60 * 1000;
 
 app.fetchInProgress = false;
 app.pendingStartupFetch = false;
@@ -638,12 +642,13 @@ function appendDebugWeatherLog(event, details) {
 }
 
 /**
- * Show or clear the debug fetch marker on the watch.
+ * Show or clear debug weather indicators on the watch.
  *
  * @param {boolean} hasError True when the debug marker should be visible.
+ * @param {number} weatherState Debug weather source/state indicator.
  * @returns {void}
  */
-function sendDebugFetchError(hasError) {
+function sendDebugWeatherStatus(hasError, weatherState) {
     var payload;
 
     if (!IS_DEBUG_BUILD) {
@@ -651,14 +656,15 @@ function sendDebugFetchError(hasError) {
     }
 
     payload = {
-        DEBUG_FETCH_ERROR: hasError ? 1 : 0
+        DEBUG_FETCH_ERROR: hasError ? 1 : 0,
+        DEBUG_WEATHER_STATE: weatherState || DEBUG_WEATHER_STATE_NORMAL
     };
 
     Pebble.sendAppMessage(payload, function() {
         console.log('[debug] Fetch error marker sent: ' + JSON.stringify(payload));
     }, function(e) {
         console.log('[debug] Fetch error marker failed: ' + JSON.stringify(e));
-        appendDebugWeatherLog('debug_marker_send_failed', e || {});
+        appendDebugWeatherLog('debug_weather_status_send_failed', e || {});
     });
 }
 
@@ -688,6 +694,52 @@ function getProviderDiagnostics(provider) {
     }
 
     return provider.diagnostics;
+}
+
+/**
+ * Return true when an ISO timestamp is older than the debug stale-cache threshold.
+ *
+ * @param {string|null} fetchedAtUtc Cache timestamp.
+ * @returns {boolean}
+ */
+function isDebugCacheTimestampStale(fetchedAtUtc) {
+    var timestamp;
+
+    if (typeof fetchedAtUtc !== 'string' || fetchedAtUtc === '') {
+        return false;
+    }
+
+    timestamp = new Date(fetchedAtUtc).getTime();
+    return isFinite(timestamp) && Date.now() - timestamp > DEBUG_STALE_CACHE_MS;
+}
+
+/**
+ * Compute the debug time-color state from provider diagnostics.
+ *
+ * @param {Object} diagnostics Provider diagnostics.
+ * @returns {number} Debug weather state.
+ */
+function getDebugWeatherState(diagnostics) {
+    var cache = diagnostics && diagnostics.cache ? diagnostics.cache : {};
+    var source = typeof cache.source === 'string' ? cache.source : '';
+    var usesCache = source.indexOf('cache') !== -1
+        || Boolean(diagnostics && diagnostics.openMeteo && diagnostics.openMeteo.cachedSupplement);
+    var staleCache = usesCache && (
+        isDebugCacheTimestampStale(cache.primaryFetchedAtUtc)
+        || isDebugCacheTimestampStale(cache.supplementFetchedAtUtc)
+        || isDebugCacheTimestampStale(cache.yandexFetchedAtUtc)
+        || isDebugCacheTimestampStale(cache.openMeteoFetchedAtUtc)
+    );
+
+    if (staleCache) {
+        return DEBUG_WEATHER_STATE_STALE_CACHE;
+    }
+
+    if (source === 'openmeteo_fallback' || source === 'openmeteo_cache') {
+        return DEBUG_WEATHER_STATE_OPENMETEO_TEMP;
+    }
+
+    return DEBUG_WEATHER_STATE_NORMAL;
 }
 
 function startTick() {
@@ -1118,11 +1170,11 @@ function sendFixtureWeather(fixture) {
     console.log('[fixture] Sending weather fixture: ' + (fixture.name || '(unknown)'));
     Pebble.sendAppMessage(payload, function() {
         console.log('[fixture] Weather fixture sent successfully');
-        sendDebugFetchError(false);
+        sendDebugWeatherStatus(false, DEBUG_WEATHER_STATE_NORMAL);
     }, function(e) {
         console.log('[fixture] Weather fixture failed: ' + JSON.stringify(e));
         appendDebugWeatherLog('fixture_weather_send_failed', e || {});
-        sendDebugFetchError(true);
+        sendDebugWeatherStatus(true, DEBUG_WEATHER_STATE_NORMAL);
     });
 }
 
@@ -1186,6 +1238,7 @@ function fetch(provider, force, bypassFetchBackoff) {
         clearFetchBackoff(provider.id);
     }
 
+    app.fetchInProgress = true;
     console.log('Fetching from ' + provider.name);
     appendDebugWeatherLog('fetch_start', {
         provider: provider.id,
@@ -1193,7 +1246,6 @@ function fetch(provider, force, bypassFetchBackoff) {
         force: Boolean(force),
         location: app.settings ? app.settings.location : null
     });
-    app.fetchInProgress = true;
     var fetchStart = Date.now();
     var attempt = incrementFetchAttemptCounter();
     var fetchStatus = {
@@ -1206,6 +1258,7 @@ function fetch(provider, force, bypassFetchBackoff) {
         provider.fetch(
             function() {
                 var warnings = getProviderWarnings(provider);
+                var diagnostics = getProviderDiagnostics(provider);
                 // Sucess, update recent fetch time
                 app.fetchInProgress = false;
                 localStorage.setItem(KEY_LAST_FETCH_SUCCESS, JSON.stringify(fetchStatus));
@@ -1220,14 +1273,14 @@ function fetch(provider, force, bypassFetchBackoff) {
                 appendDebugWeatherLog(warnings.length > 0 ? 'fetch_success_with_warnings' : 'fetch_success', {
                     provider: provider.id,
                     warnings: warnings,
-                    diagnostics: getProviderDiagnostics(provider),
+                    diagnostics: diagnostics,
                     usedGpsCache: provider.usedGpsCache,
                     gpsErrorCode: provider.gpsErrorCode,
                     locationMode: provider.locationMode,
                     countryCode: provider.countryCode,
                     durationMs: Date.now() - fetchStart
                 });
-                sendDebugFetchError(warnings.length > 0);
+                sendDebugWeatherStatus(false, getDebugWeatherState(diagnostics));
                 maybeTrackWeatherFetch({
                     provider: provider.id,
                     success: true,
@@ -1258,7 +1311,7 @@ function fetch(provider, force, bypassFetchBackoff) {
                     countryCode: provider.countryCode,
                     durationMs: Date.now() - fetchStart
                 });
-                sendDebugFetchError(true);
+                sendDebugWeatherStatus(true, DEBUG_WEATHER_STATE_NORMAL);
                 var attemptStatus = {
                     time: fetchStatus.time,
                     id: fetchStatus.id,
@@ -1290,7 +1343,7 @@ function fetch(provider, force, bypassFetchBackoff) {
             provider: provider && provider.id,
             message: e.message
         });
-        sendDebugFetchError(true);
+        sendDebugWeatherStatus(true, DEBUG_WEATHER_STATE_NORMAL);
     }
 }
 

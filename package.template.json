@@ -104,7 +104,8 @@
       "HOLIDAY_SLOT",
       "HOLIDAY_SET",
       "HOLIDAY_YEAR",
-      "HOLIDAY_BITS"
+      "HOLIDAY_BITS",
+      "DEBUG_WEATHER_STATE"
     ]
   }
 }

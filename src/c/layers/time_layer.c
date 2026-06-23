@@ -16,6 +16,17 @@ static TextLayer *s_time_layer;
 static TextLayer *s_am_pm_layer;
 static TextLayer *s_error_layer;
 
+static GColor debug_time_color() {
+    switch (persist_get_debug_weather_state()) {
+        case DEBUG_WEATHER_STATE_STALE_CACHE:
+            return PBL_IF_COLOR_ELSE(GColorRed, GColorWhite);
+        case DEBUG_WEATHER_STATE_OPENMETEO_TEMP:
+            return PBL_IF_COLOR_ELSE(GColorYellow, GColorWhite);
+        default:
+            return PBL_IF_COLOR_ELSE(g_config->color_time, GColorWhite);
+    }
+}
+
 void time_layer_create(Layer* parent_layer, GRect frame) {
     s_container_layer = text_layer_create(frame);
     s_time_layer = text_layer_create(GRect(0, 0, frame.size.w, frame.size.h));
@@ -122,7 +133,7 @@ void time_layer_tick() {
 
 void time_layer_refresh() {
     text_layer_set_font(s_time_layer, config_time_font());
-    text_layer_set_text_color(s_time_layer, PBL_IF_COLOR_ELSE(g_config->color_time, GColorWhite));
+    text_layer_set_text_color(s_time_layer, debug_time_color());
     time_layer_tick();  // Update main time text and layer positions
 }
 

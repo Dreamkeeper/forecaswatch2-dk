@@ -22,6 +22,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     Tuple *city_tuple = dict_find(iterator, MESSAGE_KEY_CITY);
     Tuple *sun_events_tuple = dict_find(iterator, MESSAGE_KEY_SUN_EVENTS);
     Tuple *debug_fetch_error_tuple = dict_find(iterator, MESSAGE_KEY_DEBUG_FETCH_ERROR);
+    Tuple *debug_weather_state_tuple = dict_find(iterator, MESSAGE_KEY_DEBUG_WEATHER_STATE);
     Tuple *holiday_slot_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_SLOT);
     Tuple *holiday_set_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_SET);
     Tuple *holiday_year_tuple = dict_find(iterator, MESSAGE_KEY_HOLIDAY_YEAR);
@@ -85,8 +86,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         calendar_layer_refresh();
         calendar_status_layer_refresh();
     }
-    else if (debug_fetch_error_tuple) {
-        persist_set_debug_fetch_error((bool)debug_fetch_error_tuple->value->uint8);
+    else if (debug_fetch_error_tuple || debug_weather_state_tuple) {
+        if (debug_fetch_error_tuple) {
+            persist_set_debug_fetch_error((bool)debug_fetch_error_tuple->value->uint8);
+        }
+        if (debug_weather_state_tuple) {
+            persist_set_debug_weather_state((int)debug_weather_state_tuple->value->uint8);
+        }
         time_layer_refresh();
     }
     else if (holiday_slot_tuple && holiday_set_tuple && holiday_year_tuple && holiday_bits_tuple) {

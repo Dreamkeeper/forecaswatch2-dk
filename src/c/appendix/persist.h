@@ -6,6 +6,10 @@
 
 #define HOLIDAY_BITSET_BYTES 46
 
+#define DEBUG_WEATHER_STATE_NORMAL 0
+#define DEBUG_WEATHER_STATE_OPENMETEO_TEMP 1
+#define DEBUG_WEATHER_STATE_STALE_CACHE 2
+
 typedef struct {
     int16_t year;
     uint8_t holiday_set;
@@ -42,6 +46,8 @@ int persist_get_config(Config *config);
 
 bool persist_get_debug_fetch_error();
 
+int persist_get_debug_weather_state();
+
 bool persist_get_holiday_year(uint8_t slot, int16_t year, HolidayYear *holiday_year);
 
 void persist_set_temp_lo(int val);
@@ -69,5 +75,7 @@ void persist_set_sun_event_times(time_t *data, const size_t size);
 void persist_set_config(Config config);
 
 void persist_set_debug_fetch_error(bool val);
+
+void persist_set_debug_weather_state(int val);
 
 void persist_set_holiday_year(uint8_t slot, const HolidayYear *holiday_year);

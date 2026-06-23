@@ -7,7 +7,8 @@ enum key {
     TEMP_LO, TEMP_HI, TEMP_TREND, PRECIP_TREND, FORECAST_START, CITY, SUN_EVENT_START_TYPE, SUN_EVENT_TIMES, NUM_ENTRIES,
     CURRENT_TEMP, BATTERY_LEVEL, CONFIG, UV_TREND, DEBUG_FETCH_ERROR,
     HOLIDAY_SLOT1_YEAR0, HOLIDAY_SLOT1_YEAR1, HOLIDAY_SLOT1_YEAR2,
-    HOLIDAY_SLOT2_YEAR0, HOLIDAY_SLOT2_YEAR1, HOLIDAY_SLOT2_YEAR2
+    HOLIDAY_SLOT2_YEAR0, HOLIDAY_SLOT2_YEAR1, HOLIDAY_SLOT2_YEAR2,
+    DEBUG_WEATHER_STATE
 }; // Deprecated: BATTERY_LEVEL
 
 static int holiday_key(uint8_t slot, int16_t year) {
@@ -90,6 +91,9 @@ void persist_init() {
     if (!persist_exists(DEBUG_FETCH_ERROR)) {
         persist_write_bool(DEBUG_FETCH_ERROR, false);
     }
+    if (!persist_exists(DEBUG_WEATHER_STATE)) {
+        persist_write_int(DEBUG_WEATHER_STATE, DEBUG_WEATHER_STATE_NORMAL);
+    }
 }
 
 bool persist_has_forecast_data() {
@@ -169,6 +173,10 @@ bool persist_get_debug_fetch_error() {
     return persist_read_bool(DEBUG_FETCH_ERROR);
 }
 
+int persist_get_debug_weather_state() {
+    return persist_read_int(DEBUG_WEATHER_STATE);
+}
+
 bool persist_get_holiday_year(uint8_t slot, int16_t year, HolidayYear *holiday_year) {
     int key = holiday_key(slot, year);
 
@@ -238,6 +246,10 @@ void persist_set_config(Config config) {
 
 void persist_set_debug_fetch_error(bool val) {
     persist_write_bool(DEBUG_FETCH_ERROR, val);
+}
+
+void persist_set_debug_weather_state(int val) {
+    persist_write_int(DEBUG_WEATHER_STATE, val);
 }
 
 void persist_set_holiday_year(uint8_t slot, const HolidayYear *holiday_year) {

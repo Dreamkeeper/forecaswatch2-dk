@@ -917,6 +917,8 @@ YandexProvider.prototype.withProviderData = function(lat, lon, force, onSuccess,
                 source: openMeteoCache ? 'yandex_openmeteo' : 'yandex_only',
                 yandexCachedHours: yandexCache && yandexCache.hourly ? yandexCache.hourly.length : 0,
                 openMeteoCachedHours: openMeteoCache && openMeteoCache.hourly ? openMeteoCache.hourly.length : 0,
+                yandexFetchedAtUtc: yandexCache ? yandexCache.fetchedAtUtc : null,
+                openMeteoFetchedAtUtc: openMeteoCache ? openMeteoCache.fetchedAtUtc : null,
                 graphStart: graphStartTime,
                 graphHours: graphWindowTimes.length
             };
