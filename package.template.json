@@ -1,6 +1,6 @@
 {
   "name": "yaforecaswatch2",
-  "author": "Matt Rossman",
+  "author": "Dmitry Kvasnikov",
   "version": "1.34.9",
   "buildProfile": "{{buildProfile}}",
   "keywords": [
